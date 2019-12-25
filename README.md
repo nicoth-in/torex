@@ -1,2 +1,2 @@
-# igniter
- Frontend JS Engine
+# Igniter
+  High-performance frontend Engine.

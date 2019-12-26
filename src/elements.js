@@ -13,5 +13,6 @@
         return this.plainRender(target);
       }
     }
+    Object.defineProperty(Ignite[window._name], "name", { value: window._name });
   }
 })(window, document);

@@ -1,48 +1,62 @@
-class Ignite { }
+class Ignite {}
 
 Ignite.Element = class {
   constructor(args) {
     this.node = document.createDocumentFragment();
-    if(!args) { this.props = {}, this.items = null; return; };
+
+    if (!args) {
+      (this.props = {}), (this.items = null);
+      return;
+    }
+
     let { items, props } = args;
     this.items = items || null;
     this.props = props || {};
   }
+
   addChilds(items) {
-    if(!items) {
+    if (!items) {
       return;
-    } else if(typeof items == "string") {
-      this.node.appendChild(document.createTextNode(items))
-    } else if(items instanceof Ignite.Element) {
-      this.node.appendChild(items.render())
-    } else if(items instanceof Array) {
-      items.forEach((el)=>this.addChilds(el));
+    } else if (typeof items == "string") {
+      this.node.appendChild(document.createTextNode(items));
+    } else if (items instanceof Ignite.Element) {
+      this.node.appendChild(items.render());
+    } else if (items instanceof Array) {
+      items.forEach(el => this.addChilds(el));
     }
   }
+
   plainRender(target) {
     this.willMount();
     this.addEvents();
-    if(!this.node) {
-      this.node=document.createDocumentFragment();
+
+    if (!this.node) {
+      this.node = document.createDocumentFragment();
     }
+
     this.addProps();
     this.addChilds(this.items);
-    if(target) {
+
+    if (target) {
       target.appendChild(this.node);
     }
+
     this.didMount();
     return this.node;
   }
+
   addProps() {
     let props = this.props;
-    if(this.node instanceof Element) {
-      for(let key of Object.keys(props)) {
+
+    if (this.node instanceof Element) {
+      for (let key of Object.keys(props)) {
         if (key in this.node) {
           this.node[key] = props[key];
         }
       }
     }
   }
+
   addEvents() {
     let events = {
       onabort: this.onAbort,
@@ -111,52 +125,65 @@ Ignite.Element = class {
       ontransitioncancel: this.onTransitionCancel,
       ontransitionend: this.onTransitionEnd,
       onvisibilitychange: this.onVisibilityChange,
-      onwheel: this.onWheel,
-    }
-    for(let key_value of Object.keys(events)) {
-      if(!this.node) return;
-      if(events[key_value]) {
+      onwheel: this.onWheel
+    };
+
+    for (let key_value of Object.keys(events)) {
+      if (!this.node) return;
+
+      if (events[key_value]) {
         events[key_value] = events[key_value].bind(this);
         this.node[key_value] = events[key_value];
       }
     }
   }
-  willMount() { }
-  didMount() { }
+
+  willMount() {}
+
+  didMount() {}
+
   render(target) {
     return this.plainRender(target);
   }
+
   transform(node) {
-    if(this.node instanceof Element) {
+    if (this.node instanceof Element) {
       this.node.replaceWith(node);
     }
+
     this.node = node;
   }
+
   help() {
-    if(this.desc) {
+    if (this.desc) {
       console.info(this.constructor.name, "-", this.desc);
     } else {
       console.info(this.constructor.name, "has no description.");
     }
   }
+
   tree() {
     return this.__log_tree(this, 0);
   }
+
   __log_tree(items, i) {
-    if(!items) {
+    if (!items) {
       return false;
-    } else if(typeof items == "string") {
+    } else if (typeof items == "string") {
       let n = "| ".repeat(i++);
       this.log(n + "Text Node");
-    } else if(items instanceof Ignite.Element) {
+    } else if (items instanceof Ignite.Element) {
       let n = "| ".repeat(i++);
       this.log(n + items.constructor.name);
+
       this.__log_tree(items.items, i);
-    } else if(items instanceof Array) {
-      items.forEach((el)=>this.__log_tree(el, i));
+    } else if (items instanceof Array) {
+      items.forEach(el => this.__log_tree(el, i));
     }
+
     return true;
   }
+
   log(format) {
     console.info(format);
   }

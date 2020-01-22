@@ -153,6 +153,22 @@ Ignite.Element = class {
 
     this.node = node;
   }
+  
+  add(other) {
+  	if (!other) return this;
+    if (!this.items) {
+    	this.items = other;
+    } else if (this.items instanceof Array) {
+    	if (other instanceof Array) {
+      	this.items.append(other);
+      } else {
+      	this.items.push(other);
+      }
+    } else {
+    	this.items = [this.items, other];
+    }
+    return this;
+  }
 
   help() {
     if (this.desc) {

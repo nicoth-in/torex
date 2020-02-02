@@ -126,7 +126,8 @@ Ignite.Element = class {
       wheel: this.onWheel,
       // Custom
       willmount: this.willMount,
-      didmount: this.didMount
+      didmount: this.didMount,
+      newinstancecreated: this.instanceCreated,
     };
 
     for (let b of Object.keys(a)) {
@@ -231,7 +232,13 @@ Ignite.Bind = class extends Ignite.Element {
   constructor(a) {
     super();
     this.node = a;
-
+	  this.node.dispatchEvent(
+      new CustomEvent("newinstancecreated", {
+        detail: {
+        	origin: this,
+        }
+      })
+    );
     for (let b of this.node.attributes) {
       this.props[b.name] = b.value;
     }
@@ -244,9 +251,10 @@ Ignite.Bind = class extends Ignite.Element {
       this.__proto__ = Ignite[this._name].prototype;
     }
   }
-
+	
   render(a) {
     this.transform(document.createElement(this._name));
     return this.plainRender(a);
   }
+  
 };

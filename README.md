@@ -1,7 +1,15 @@
-# Igniter
-
+# Igniter 0.2.1
 Ignite your pages! Igniter is a *frontend* JS engine with zero-cost abstraction.
 It helps you to build and manage DOM in an object-oriented programming style.
+
+## Use
+
+Igniter consists of two parts: core and elements. Core provides simple classes like Ignite.Element and Ignite.Bind. 
+Elements part adds 144 basic HTML elements.
+```html
+<script src="https://cdn.jsdelivr.net/gh/nicoth-in/igniter@0.2.1/src/core.dist.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/nicoth-in/igniter@0.2.1/src/elements.dist.js"></script>
+```
 
 ## First steps
 

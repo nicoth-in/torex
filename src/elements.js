@@ -150,14 +150,9 @@
     window._name = a[b];
     window._name = window._name[0].toUpperCase() + window._name.slice(1);
     a[b] = window._name;
-    Ignite[window._name] = class extends Ignite.Element {
-      constructor(...a) {
-        super(...a);
-      }
-
-      render(c) {
-        this.transform(document.createElement(a[b]));
-        return this.plainRender(c);
+    Ignite[window._name] = class extends Ignite.Node {
+      constructor(items) {
+        super(window._name, items);
       }
     };
     Object.defineProperty(Ignite[window._name], "name", {

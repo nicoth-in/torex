@@ -2,8 +2,9 @@
 <h1 align="center">Igniter v0.3</h1>
 <p align="center"><a href="https://github.com/nicoth-in/igniter/blob/v0.3/LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-blue.svg"></a></p>
 
-Ignite your pages! Igniter is a rapid *frontend* JS engine with zero-cost abstraction.
-It helps you to build and manage DOM in an object-oriented programming style.
+<p align="center">Ignite your pages! Igniter is a rapid <i>frontend</i> JS engine with zero-cost abstraction.
+It helps you to build and manage DOM in an object-oriented programming style.</p>
+<hr>
 
 ## Use
 
@@ -93,6 +94,6 @@ text.addEventListener("click", function(ev) { console.log(ev) });
 
 ## Inside Igniter engine
 
-Igniter v0.3.x is built on top of the DOM.
+Igniter v0.3.x is built via DOM Nodes.
 
 ![Igniter Scheme](https://github.com/nicoth-in/igniter/raw/dev/content/IgniterScheme.png "Igniter scheme")

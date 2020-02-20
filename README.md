@@ -1,10 +1,6 @@
-<center>
-
-![Igniter Scheme](https://github.com/nicoth-in/igniter/raw/v0.3/content/Logo.png "Logo")
-
-# Igniter v0.3 &middot; [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/nicoth-in/igniter/blob/v0.3/LICENSE.md)
-
-</center>
+<p align="center"> <img src="https://github.com/nicoth-in/igniter/raw/v0.3/content/Logo.png"></p>
+<h1 align="center">Igniter v0.3</h1>
+<p align="center"><a href="https://github.com/nicoth-in/igniter/blob/v0.3/LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-blue.svg"></a></p>
 
 Ignite your pages! Igniter is a rapid *frontend* JS engine with zero-cost abstraction.
 It helps you to build and manage DOM in an object-oriented programming style.

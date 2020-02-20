@@ -147,23 +147,21 @@
   ];
 
   for (let b in a) {
+
     window._name = a[b];
     window._name = window._name[0].toUpperCase() + window._name.slice(1);
     a[b] = window._name;
-    Ignite[window._name] = class extends Ignite.Element {
-      constructor(...a) {
-        super(...a);
-      }
+    delete window._name;
 
-      render(c) {
-        this.transform(document.createElement(a[b]));
-        return this.plainRender(c);
+    Ignite[a[b]] = class extends Ignite.Node {
+      constructor(items) {
+        super(a[b], items);
       }
     };
-    Object.defineProperty(Ignite[window._name], "name", {
-      value: window._name
+    Object.defineProperty(Ignite[a[b]], "name", {
+      value: a[b]
     });
   }
 
-  delete window._name;
+
 })(window, document);

@@ -155,7 +155,6 @@
 
     Ignite[a[b]] = class extends Ignite.Node {
       constructor(items) {
-        console.log(a[b]);
         super(a[b], items);
       }
     };

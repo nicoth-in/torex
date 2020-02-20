@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <script src="https://cdn.jsdelivr.net/gh/nicoth-in/igniter@0.2.1/src/core.dist.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/nicoth-in/igniter@0.2.1/src/elements.dist.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/nicoth-in/igniter@0.3.0/src/core.dist.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/nicoth-in/igniter@0.3.0/src/elements.dist.js"></script>
     <meta charset="UTF-8">
     <title>Dropdown menu Example</title>
   </head>
@@ -47,12 +47,14 @@
       <a href="#" class="link" id="links">See projects</a>
     </div>
     <script>
-
       let { A, Div } = Ignite;
 
       class MyLink extends A {
       	constructor(url, name) {
-          super(name, { href: url, title: name, class: "link" });
+          super(name);
+          this.href = url;
+          this.title = name;
+          this.className = "link";
         }
       }
 
@@ -61,28 +63,25 @@
           super();
           this.target = target;
           this.state = true;
+          this.className = "dropdown";
           this.showOrHide = this.showOrHide.bind(this);
           this.target.addEventListener("click", this.showOrHide);
-          this.prop("class", "dropdown");
-        }
-        addAtMenu() {
-          this.render(this.target);
-          this.showOrHide();
         }
         showOrHide(e) {
-        	if(this.state) {
-          	this.node.style.display = "none";
-          } else {
-          	this.node.style.display = "flex";
-          }
+        	this.style.display = (this.state) ? "none" : "flex";
           this.state = !this.state;
         }
       }
 
-      let links = new LinksMenu(document.querySelector("#links"));
-      links.add(new MyLink("#link-1", "All my projects"));
-      links.add(new MyLink("#link-2", "Only web projects"));
-      links.addAtMenu();
+      let target = document.querySelector("#links");
+      let links = new LinksMenu(target);
+
+      links.appendChild(new MyLink("#link-1", "All my projects"));
+      links.appendChild(new MyLink("#link-2", "Only web projects"));
+
+      links.showOrHide();
+
+      target.appendChild(links);
 
     </script>
   </body>

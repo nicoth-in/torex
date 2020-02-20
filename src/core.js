@@ -9,7 +9,7 @@ Ignite.Node = class Node {
       }
     	target = Object.getPrototypeOf(target);
     }
-  	let el = document.createElement(name);
+  	let el = (name) ? document.createElement(name) : document.createDocumentFragment();
 		Object.setPrototypeOf(
     	target.constructor.prototype,
     	Object.getPrototypeOf(el)
@@ -115,3 +115,9 @@ Ignite.Node = class Node {
   	return el;
   }
 }
+
+Ignite.Empty = class Empty extends Ignite.Node {
+  constructor(items) {
+    super(null, items);
+  }
+};

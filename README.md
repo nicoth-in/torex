@@ -1,6 +1,6 @@
 <center>
 
-![Igniter Scheme](https://github.com/nicoth-in/igniter/raw/dev/content/IgniterScheme.png "Igniter scheme")
+![Igniter Scheme](https://github.com/nicoth-in/igniter/raw/v0.3/content/Logo.png "Logo")
 
 # Igniter v0.3 &middot; [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/nicoth-in/igniter/blob/v0.3/LICENSE.md)
 

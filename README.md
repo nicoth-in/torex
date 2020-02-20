@@ -1,5 +1,10 @@
+<center>
+
+![Igniter Scheme](https://github.com/nicoth-in/igniter/raw/dev/content/IgniterScheme.png "Igniter scheme")
 
 # Igniter v0.3 &middot; [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/nicoth-in/igniter/blob/v0.3/LICENSE.md)
+
+</center>
 
 Ignite your pages! Igniter is a rapid *frontend* JS engine with zero-cost abstraction.
 It helps you to build and manage DOM in an object-oriented programming style.

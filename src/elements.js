@@ -154,8 +154,8 @@
     delete window._name;
 
     Ignite[a[b]] = class extends Ignite.Node {
-      constructor(items) {
-        super(a[b], items);
+      constructor(items, data) {
+        super(a[b], items, data);
       }
     };
     Object.defineProperty(Ignite[a[b]], "name", {

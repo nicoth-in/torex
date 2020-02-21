@@ -2,7 +2,7 @@
 <h1 align="center">Igniter v0.3</h1>
 <p align="center"><a href="https://github.com/nicoth-in/igniter/blob/v0.3/LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-blue.svg"></a></p>
 
-<p align="center">Ignite your pages! Igniter is a rapid <i>frontend</i> JS engine with zero-cost abstraction.
+<p align="center">Ignite your pages! Igniter is a rapid <i>frontend</i> JS framework without abstractions.
 It helps you to build and manage DOM in an object-oriented programming style.</p>
 <hr>
 
@@ -51,7 +51,7 @@ Igniter classes aren't build on top of the DOM, they are DOM Nodes.
 For example, "Div" is an Igniter class, but after construction it becomes DOM Node.
 Igniter creates and re-builds DOM nodes by attaching your classes as a prototype chain.
 
-You can learn more in [Inside Igniter engine](#Inside-Igniter-engine) section.
+You can learn more in [Inside Igniter framework](#Inside-Igniter-framework) section.
 
 ## Accessing element's properties
 
@@ -92,7 +92,7 @@ var text = new P("Some text.");
 text.addEventListener("click", function(ev) { console.log(ev) });
 ```
 
-## Inside Igniter engine
+## Inside Igniter framework
 
 Igniter v0.3.x is built via DOM Nodes.
 

@@ -12,8 +12,8 @@ Igniter consists of two parts: core and elements. Core provides simple Node clas
 Elements part adds 144 basic HTML elements.
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/nicoth-in/igniter@0.3.2/src/core.dist.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/nicoth-in/igniter@0.3.2/src/elements.dist.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/nicoth-in/igniter@0.3.3/src/core.dist.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/nicoth-in/igniter@0.3.3/src/elements.dist.js"></script>
 ```
 
 ## First steps

@@ -1,8 +1,10 @@
+<p align="center"> <img src="https://github.com/nicoth-in/igniter/raw/v0.3/content/Logo.png"></p>
+<h1 align="center">Igniter v0.3</h1>
+<p align="center"><a href="https://github.com/nicoth-in/igniter/blob/v0.3/LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-blue.svg"></a></p>
 
-# Igniter v0.3 &middot; [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/nicoth-in/igniter/blob/v0.3/LICENSE.md)
-
-Ignite your pages! Igniter is a rapid *frontend* JS engine with zero-cost abstraction.
-It helps you to build and manage DOM in an object-oriented programming style.
+<p align="center">Ignite your pages! Igniter is a rapid <i>frontend</i> JS framework without abstractions.
+It helps you to build and manage DOM in an object-oriented programming style.</p>
+<hr>
 
 ## Use
 
@@ -10,8 +12,8 @@ Igniter consists of two parts: core and elements. Core provides simple Node clas
 Elements part adds 144 basic HTML elements.
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/nicoth-in/igniter@0.3.0/src/core.dist.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/nicoth-in/igniter@0.3.0/src/elements.dist.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/nicoth-in/igniter@0.3.3/src/core.dist.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/nicoth-in/igniter@0.3.3/src/elements.dist.js"></script>
 ```
 
 ## First steps
@@ -49,7 +51,7 @@ Igniter classes aren't build on top of the DOM, they are DOM Nodes.
 For example, "Div" is an Igniter class, but after construction it becomes DOM Node.
 Igniter creates and re-builds DOM nodes by attaching your classes as a prototype chain.
 
-You can learn more in [Inside Igniter engine](#Inside-Igniter-engine) section.
+You can learn more in [Inside Igniter framework](#Inside-Igniter-framework) section.
 
 ## Accessing element's properties
 
@@ -90,8 +92,8 @@ var text = new P("Some text.");
 text.addEventListener("click", function(ev) { console.log(ev) });
 ```
 
-## Inside Igniter engine
+## Inside Igniter framework
 
-Igniter v0.3.x is built on top of the DOM.
+Igniter v0.3.x is built via DOM Nodes.
 
 ![Igniter Scheme](https://github.com/nicoth-in/igniter/raw/dev/content/IgniterScheme.png "Igniter scheme")

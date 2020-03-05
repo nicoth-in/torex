@@ -1,23 +1,39 @@
 class Ignite {}
 
+// 0 - [off]
+// 1 - [errors]
+// 2 - [errors, warnings]
+// 3 or more - [errors, warnings, info]
+Ignite.VERBOSE_LEVEL = 0;
+
+Ignite.LOG = function() {
+	if(Ignite.VERBOSE_LEVEL >= arguments[0]) {
+		for(var i = 1; i < arguments.length; i++) {
+			if(arguments[0] == 1) {
+				console.error(arguments[i]);
+			} else if(arguments[0] == 2) {
+				console.warn(arguments[i]);
+			} else if(arguments[0] == 3) {
+				console.info(arguments[i]);
+			} else {
+				console.log(arguments[i]);
+			}
+		}
+	}
+}
+
 Ignite.Node = class Node {
-	constructor(name, items) {
+	constructor(name, items, data) {
   	var target = Object.getPrototypeOf(this);
   	while(target.constructor != Ignite.Node) {
     	if(target == Object.getPrototypeOf(Object)) {
-      	break;
+				Ignite.LOG(1, "Wrong constructor call");
+				return null;
       }
     	target = Object.getPrototypeOf(target);
     }
+		target.props = {};
   	let el = (name) ? document.createElement(name) : document.createDocumentFragment();
-		Object.setPrototypeOf(
-    	target.constructor.prototype,
-    	Object.getPrototypeOf(el)
-    );
-    Object.setPrototypeOf(
-    	el,
-      Object.getPrototypeOf(this).constructor.prototype
-    );
     function appendAll(t, a) {
     	if(!a) {
       } else if (typeof a == "string") {
@@ -29,6 +45,28 @@ Ignite.Node = class Node {
       }
     }
     appendAll(el, items);
+		if(data) {
+			for(let b of Object.keys(data)) {
+				if(!data[b]) { } else if (b == "props") {
+					target.props = data[b];
+				} else {
+					try {
+					  el.setAttribute(b, data[b]);
+					}
+					catch(error) {
+						Ignite.LOG(2, error.toString());
+					}
+				}
+			}
+		}
+		Object.setPrototypeOf(
+			target.constructor.prototype,
+			Object.getPrototypeOf(el)
+		);
+		Object.setPrototypeOf(
+			el,
+			Object.getPrototypeOf(this).constructor.prototype
+		);
     let c = {
       abort: this.onAbort,
       afterscriptexecute: this.onAfterScriptExecute,
@@ -100,24 +138,18 @@ Ignite.Node = class Node {
       transitionend: this.onTransitionEnd,
       visibilitychange: this.onVisibilityChange,
       wheel: this.onWheel,
-      // Custom
-      willmount: this.willMount,
-      didmount: this.didMount,
-      newinstancecreated: this.instanceCreated,
     };
-
     for (let b of Object.keys(c)) {
       if (c[b]) {
         el.addEventListener(b, c[b]);
       }
     }
-
   	return el;
   }
 }
 
 Ignite.Empty = class Empty extends Ignite.Node {
-  constructor(items) {
-    super(null, items);
+  constructor(items, data) {
+    super(null, items, data);
   }
 };

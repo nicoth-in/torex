@@ -1,5 +1,5 @@
 <p align="center"> <img src="https://github.com/nicoth-in/igniter/raw/v0.3/content/Logo.png"></p>
-<h1 align="center">Igniter v0.3</h1>
+<h1 align="center">Igniter v0.4-dev</h1>
 <p align="center"><a href="https://github.com/nicoth-in/igniter/blob/v0.3/LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-blue.svg"></a></p>
 
 <p align="center">Ignite your pages! Igniter is a rapid <i>frontend</i> JS framework without abstractions.

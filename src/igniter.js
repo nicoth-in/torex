@@ -1,6 +1,5 @@
 import NodeConstructor from './constructor';
 
-
 const SuperAnchorElement = NodeConstructor;
 Object.setPrototypeOf(SuperAnchorElement.prototype, HTMLAnchorElement.prototype);
 Object.setPrototypeOf(SuperAnchorElement, HTMLAnchorElement);

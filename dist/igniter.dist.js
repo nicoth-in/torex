@@ -1,4 +1,4 @@
-var Igniter = (function (exports) {
+var Igniter = (function (exports, Object) {
   'use strict';
 
   class SharedStorage extends EventTarget {
@@ -2613,4 +2613,4 @@ var Igniter = (function (exports) {
 
   return exports;
 
-}({}));
+}({}, Object));

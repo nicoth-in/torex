@@ -1,5 +1,5 @@
-import { SharedStorage } from 'storage';
-import { PseudoRand } from 'random';
+import { SharedStorage } from 'storage.js';
+import { PseudoRand } from 'random.js';
 
 const ps_rand = new PseudoRand();
 

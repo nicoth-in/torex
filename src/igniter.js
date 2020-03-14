@@ -1,4 +1,4 @@
-import { NodeConstructor } from 'constructor';
+import { NodeConstructor } from 'constructor.js';
 
 const SuperP = NodeConstructor;
 Object.setPrototypeOf(SuperP.prototype, HTMLParagraphElement.prototype);

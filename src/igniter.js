@@ -1554,20 +1554,6 @@ export class Noscript extends SuperElement {
 			super(o);
 		}
 	}
-export class Object extends SuperObjectElement {
-		constructor(o) {
-			if(o) {
-				o.tag = "object";
-				o.is_native = false;
-			} else {
-				o = {
-					is_native: true,
-					from: HTMLObjectElement,
-				};
-			}
-			super(o);
-		}
-	}
 export class Ol extends SuperOListElement {
 		constructor(o) {
 			if(o) {

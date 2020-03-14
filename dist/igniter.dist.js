@@ -1723,20 +1723,6 @@ var Igniter = (function (exports, Object) {
   			super(o);
   		}
   	}
-  class Object extends SuperObjectElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "object";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLObjectElement,
-  				};
-  			}
-  			super(o);
-  		}
-  	}
   class Ol extends SuperOListElement {
   		constructor(o) {
   			if(o) {
@@ -2557,7 +2543,6 @@ var Igniter = (function (exports, Object) {
   exports.Noembed = Noembed;
   exports.Noframes = Noframes;
   exports.Noscript = Noscript;
-  exports.Object = Object;
   exports.Ol = Ol;
   exports.Optgroup = Optgroup;
   exports.Option = Option;

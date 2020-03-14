@@ -1,9 +1,9 @@
-import { SharedStorage } from 'storage.js';
-import { PseudoRand } from 'random.js';
+import SharedStorage from './storage';
+import PseudoRand from './random';
 
 const ps_rand = new PseudoRand();
 
-export class NodeConstructor {
+class NodeConstructor {
 	constructor(t) {
   	var answer;
   	if(!t.is_native) {
@@ -32,3 +32,5 @@ export class NodeConstructor {
   	node.sharedStorage = new SharedStorage(node);
   }
 }
+
+export default NodeConstructor

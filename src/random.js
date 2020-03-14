@@ -1,5 +1,4 @@
-
-export class PseudoRand {
+class PseudoRand {
 	next() {
   	return this.random("abcdefghijklmnopqrstuvwxyz-", 16);
   }
@@ -91,3 +90,5 @@ export class PseudoRand {
 
   }
 }
+
+export default PseudoRand

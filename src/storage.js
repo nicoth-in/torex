@@ -1,5 +1,4 @@
-
-export class SharedStorage extends EventTarget {
+class SharedStorage extends EventTarget {
 	constructor(parent) {
       super();
       this.storage = {};
@@ -43,3 +42,5 @@ export class SharedStorage extends EventTarget {
     return false;
   }
 }
+
+export default SharedStorage

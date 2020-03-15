@@ -1,10 +1,22 @@
 <html>
   <head>
-    <script src="https://cdn.jsdelivr.net/gh/nicoth-in/igniter@0.4.0-dev8/dist/igniter.dist.js"></script>
+    <script src="../dist/igniter.dist.js"></script>
   </head>
   <body>
+    <p is="my-p"><b>Prev </b></p>
     <script>
-      console.log(Igniter);
+
+      const { P } = Igniter;
+
+      class MyP extends P {
+        constructor(o) {
+          super(o);
+          this.appendChild(document.createTextNode("my text here"));
+        }
+      }
+
+      new MyP({custom: "my-p"});
+
     </script>
   </body>
 </html>

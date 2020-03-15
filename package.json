@@ -1,0 +1,6 @@
+{
+  "name": "Igniter",
+  "scripts": {
+    "build": "rollup -c"
+  }
+}

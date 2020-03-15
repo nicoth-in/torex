@@ -6,94 +6,12 @@
 It helps you to build and manage DOM in an object-oriented programming style.</p>
 <hr>
 
-## Use
+## About Igniter
 
-Igniter consists of two parts: core and elements. Core provides simple Node class.
-Elements part adds 144 basic HTML elements.
+Igniter is rapid and powerful framework. Major features are:
 
-```html
-<script src="https://cdn.jsdelivr.net/gh/nicoth-in/igniter@0.3.3/src/core.dist.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/nicoth-in/igniter@0.3.3/src/elements.dist.js"></script>
-```
-
-## First steps
-
-Let’s build our first app. This is the minimal solution on classes:
-
-```js
-class MyFirstApp extends Ignite.Empty {
-  constructor(...args) {
-    super(...args);
-  }
-}
-
-let app = new MyFirstApp();
-```
-Now run this code. You should see nothing. Why? Actually, because we need to append element to the document. Add this line at the end:
-```js
-document.body.appendChild(app);
-```
-This code will render our app into the body, but we still get an empty page. That is because we render an empty container without any content in it. So, let’s change it.
-```js
-let app = new MyFirstApp("Some text");
-```
-Yeah, now you should see "Some text" in your body container. However, we don’t want just text. Firstly, make sure you import **elements.js** lib. If so, change the first line of the code:
-
-```js
-class MyFirstApp extends Ignite.Div {
-```
-
-This actually renders your class in div container instead of empty.
-
-#### Note
-
-Igniter classes aren't build on top of the DOM, they are DOM Nodes.
-For example, "Div" is an Igniter class, but after construction it becomes DOM Node.
-Igniter creates and re-builds DOM nodes by attaching your classes as a prototype chain.
-
-You can learn more in [Inside Igniter framework](#Inside-Igniter-framework) section.
-
-## Accessing element's properties
-
-```js
-let { Div, P } = Ignite;
-
-class MyFirstApp extends Div {
-  constructor(items) {
-    super(items);
-    this.id = "app";
-    this.title = "App div";
-  }
-}
-
-let app = new MyFirstApp(new P("Some text"));
-document.body.appendChild(app);
-
-```
-
-## Events
-
-```js
-class MyFirstApp extends Div {
-  constructor(items) {
-    super(items);
-  }
-  onClick(e) {
-    console.log(e);
-  }
-}
-```
-Naming is strict. Following the naming convention, all method names should be in lowerCamelCase.
-
-You can also add listeners.
-
-```js
-var text = new P("Some text.");
-text.addEventListener("click", function(ev) { console.log(ev) });
-```
-
-## Inside Igniter framework
-
-Igniter v0.3.x is built via DOM Nodes.
-
-![Igniter Scheme](https://github.com/nicoth-in/igniter/raw/dev/content/IgniterScheme.png "Igniter scheme")
+- It uses the most advance node managing method. All JS objects created as Igniter Elements are native DOM Nodes.
+- Igniter based on Custom Elements Registry. It can be mixed with native, cause it **is** native.
+- It is reactive. If you change Igniter Element, you actually change DOM.
+- No Virtual DOM by default, no abstractions.
+- You can use templates, mix generated HTML with JS without pain.

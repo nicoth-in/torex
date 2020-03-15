@@ -1,4 +1,4 @@
-var Igniter = (function (exports, Object) {
+var Igniter = (function (exports) {
   'use strict';
 
   class SharedStorage extends EventTarget {
@@ -46,2411 +46,1995 @@ var Igniter = (function (exports, Object) {
     }
   }
 
-  class PseudoRand {
-  	next() {
-    	return this.random("abcdefghijklmnopqrstuvwxyz-", 16);
-    }
-    reset() {
-      index = 0;
-      bitIndex = 0;
-      crypto.getRandomValues(buffer);
-    }
-    getBits(count) {
-      let bits = 0;
-      while (count > 0) {
-        const todo = count < 8 - bitIndex ? count : 8 - bitIndex;
-        count -= todo;
-        bits = bits << todo;
-        bits += (BigInt(buffer[index]) >> bitIndex) & ((1 << todo) -1);
-        bitIndex += todo;
-        if (bitIndex === 8) {
-          bitIndex = 0;
-          index++;
-        }
-        if (index === max) {
-          this.reset();
-        }
-      }
-      return bits;
-    }
-    countBits(num) {
-      let bitCount = 0;
-      while (num > 0) {
-        bitCount++;
-        num = num >> 1;
-      }
-      return bitCount;
-    }
-    getN(max, bitCount) {
-      if (max <= 0) {
-        throw new Error("this does not compute unless you want an infinite loop");
-      }
-      let out;
-
-      do {
-        out = this.getBits(bitCount);
-      } while (out >= max);
-
-      return out;
-    }
-    random(input, count) {
-      const buffer = new Uint8Array(32);
-      const max = BigInt(buffer.length);
-
-      this.reset();
-
-      let wasNumber = false;
-      let wasString = false;
-
-      switch (typeof input) {
-        default: {
-          throw new Error("unsupported input");
-        }
-        case "number": {
-          wasNumber = true;
-          input = BigInt(input);
-        }
-        case "bigint": {
-          const out = this.getN(input, this.countBits(max));
-          return wasNumber ? Number(out) : out;
-        }
-        case "string": {
-          wasString = true;
-          input = input.split("");
-        }
-        case "object": {
-          if (!Array.isArray(input)) {
-            throw new Error("objects are not supported here");
-          }
-          if (typeof count != "number" && typeof count != "bigint") {
-            throw new Error("you need to specify a count");
-          }
-          const contentCount = BigInt(input.length);
-          const bitCount = this.countBits(contentCount);
-          const out = [...Array(count)].map(_=> {
-            return input[this.getN(contentCount, bitCount)];
-          });
-          return wasString ? out.join("") : out;
-        }
-      }
-
-    }
+  function Randomize() {
+  	return Array.apply(0, Array(16)).map(function() {
+      return (function(charset){
+          return charset.charAt(Math.floor(Math.random() * charset.length))
+      }('abcdefghijklmnopqrstuvwxyz-'));
+  	}).join('')
   }
 
-  const ps_rand = new PseudoRand();
-
   class NodeConstructor {
-  	constructor(t) {
+  	constructor(c, t) {
     	var answer;
+  		this.c = c;
+  		// If this is a script call
     	if(!t.is_native) {
       	if(t.custom) {
-        	if(!customElements.get(t.custom)) this.customize(t.custom, t.tag);
-          answer = document.createElement(t.custom);
+  				// If we want a custom el
+  				if(this.checkSelfConstruction(t.tag)) {
+  					console.error("You can't customize default elements. Create a new class and extend this element.");
+  				} else if(!customElements.get(t.custom)) {
+  					// If it not exists try to create
+  					try {
+  						this.customize(t.custom, t.tag);
+  						answer = document.createElement(t.custom);
+  					}
+  					catch(e) {
+  						console.error(e);
+  					}
+  				} else {
+  					// If it exists just create
+  					console.error("Custom element", t.custom, "already exists. Created with prev constructor.");
+  					answer = document.createElement(t.custom);
+  				}
         } else {
-        	t.custom = ps_rand.next();
+  				// If this is not a custom element
+        	t.custom = Randomize();
         	while(customElements.get(t.custom)) {
-          	t.custom = ps_rand.next();
+          	t.custom = Randomize();
           }
           t.custom = "igniter-"+t.custom;
-          this.customize(t.custom, t.tag);
-          answer = document.createElement(t.tag, { extends: t.custom });
+  				// If it is not a default one
+  				if(!this.checkSelfConstruction(t.tag)) {
+  					try {
+  						this.customize(t.custom, t.tag);
+  						answer = document.createElement(t.tag, { extends: t.custom });
+  					}
+  					catch(e) {
+  						console.error(e);
+  					}
+  				}
         }
+  			if(!answer) {
+  				t.custom = "igniter-"+t.tag;
+  				// If it is a default constructor
+  				if(this.checkSelfConstruction(t.tag)) {
+  					if(!customElements.get(t.custom)) this.customize(t.custom, t.tag);
+  					answer = document.createElement(t.tag, { extends: t.custom });
+  				} else {
+  					console.error("Can't create an element.");
+  				}
+  			}
       } else {
-      	answer = Reflect.construct(t.from, [], this.constructor);
-      }
-  		this.storageSet(answer);
+  			// If this is a DOM call
+  			answer = Reflect.construct(t.from, [], this.c);
+  		}
+  		// Set shared storage
+  		if(answer) this.storageSet(answer);
+
       return answer;
     }
     customize(name, from) {
-    	customElements.define(name, this.constructor, { extends: from });
+    	customElements.define(name, this.c, { extends: from });
     }
     storageSet(node) {
     	node.sharedStorage = new SharedStorage(node);
     }
+  	/* Checks if it was a default node constructor by cheking prototype level */
+  	checkSelfConstruction(tag) {
+  		return (this.c.name.toLowerCase() == tag.toLowerCase());
+  	}
   }
 
-  const SuperAnchorElement = NodeConstructor;
-  Object.setPrototypeOf(SuperAnchorElement.prototype, HTMLAnchorElement.prototype);
+  class SuperAnchorElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLAnchorElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperAnchorElement.prototype, HTMLAnchorElement.prototype);
   Object.setPrototypeOf(SuperAnchorElement, HTMLAnchorElement);
 
-  const SuperElement = NodeConstructor;
-  Object.setPrototypeOf(SuperElement.prototype, HTMLElement.prototype);
+  class SuperElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperElement.prototype, HTMLElement.prototype);
   Object.setPrototypeOf(SuperElement, HTMLElement);
 
-  const SuperUnknownElement = NodeConstructor;
-  Object.setPrototypeOf(SuperUnknownElement.prototype, HTMLUnknownElement.prototype);
+  class SuperUnknownElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLUnknownElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperUnknownElement.prototype, HTMLUnknownElement.prototype);
   Object.setPrototypeOf(SuperUnknownElement, HTMLUnknownElement);
 
-  const SuperAreaElement = NodeConstructor;
-  Object.setPrototypeOf(SuperAreaElement.prototype, HTMLAreaElement.prototype);
+  class SuperAreaElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLAreaElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperAreaElement.prototype, HTMLAreaElement.prototype);
   Object.setPrototypeOf(SuperAreaElement, HTMLAreaElement);
 
-  const SuperAudioElement = NodeConstructor;
-  Object.setPrototypeOf(SuperAudioElement.prototype, HTMLAudioElement.prototype);
+  class SuperAudioElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLAudioElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperAudioElement.prototype, HTMLAudioElement.prototype);
   Object.setPrototypeOf(SuperAudioElement, HTMLAudioElement);
 
-  const SuperBaseElement = NodeConstructor;
-  Object.setPrototypeOf(SuperBaseElement.prototype, HTMLBaseElement.prototype);
+  class SuperBaseElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLBaseElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperBaseElement.prototype, HTMLBaseElement.prototype);
   Object.setPrototypeOf(SuperBaseElement, HTMLBaseElement);
 
-  const SuperQuoteElement = NodeConstructor;
-  Object.setPrototypeOf(SuperQuoteElement.prototype, HTMLQuoteElement.prototype);
+  class SuperQuoteElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLQuoteElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperQuoteElement.prototype, HTMLQuoteElement.prototype);
   Object.setPrototypeOf(SuperQuoteElement, HTMLQuoteElement);
 
-  const SuperBodyElement = NodeConstructor;
-  Object.setPrototypeOf(SuperBodyElement.prototype, HTMLBodyElement.prototype);
+  class SuperBodyElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLBodyElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperBodyElement.prototype, HTMLBodyElement.prototype);
   Object.setPrototypeOf(SuperBodyElement, HTMLBodyElement);
 
-  const SuperBRElement = NodeConstructor;
-  Object.setPrototypeOf(SuperBRElement.prototype, HTMLBRElement.prototype);
+  class SuperBRElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLBRElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperBRElement.prototype, HTMLBRElement.prototype);
   Object.setPrototypeOf(SuperBRElement, HTMLBRElement);
 
-  const SuperButtonElement = NodeConstructor;
-  Object.setPrototypeOf(SuperButtonElement.prototype, HTMLButtonElement.prototype);
+  class SuperButtonElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLButtonElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperButtonElement.prototype, HTMLButtonElement.prototype);
   Object.setPrototypeOf(SuperButtonElement, HTMLButtonElement);
 
-  const SuperCanvasElement = NodeConstructor;
-  Object.setPrototypeOf(SuperCanvasElement.prototype, HTMLCanvasElement.prototype);
+  class SuperCanvasElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLCanvasElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperCanvasElement.prototype, HTMLCanvasElement.prototype);
   Object.setPrototypeOf(SuperCanvasElement, HTMLCanvasElement);
 
-  const SuperTableCaptionElement = NodeConstructor;
-  Object.setPrototypeOf(SuperTableCaptionElement.prototype, HTMLTableCaptionElement.prototype);
+  class SuperTableCaptionElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLTableCaptionElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperTableCaptionElement.prototype, HTMLTableCaptionElement.prototype);
   Object.setPrototypeOf(SuperTableCaptionElement, HTMLTableCaptionElement);
 
-  const SuperTableColElement = NodeConstructor;
-  Object.setPrototypeOf(SuperTableColElement.prototype, HTMLTableColElement.prototype);
+  class SuperTableColElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLTableColElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperTableColElement.prototype, HTMLTableColElement.prototype);
   Object.setPrototypeOf(SuperTableColElement, HTMLTableColElement);
 
-  const SuperDataElement = NodeConstructor;
-  Object.setPrototypeOf(SuperDataElement.prototype, HTMLDataElement.prototype);
+  class SuperDataElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLDataElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperDataElement.prototype, HTMLDataElement.prototype);
   Object.setPrototypeOf(SuperDataElement, HTMLDataElement);
 
-  const SuperDataListElement = NodeConstructor;
-  Object.setPrototypeOf(SuperDataListElement.prototype, HTMLDataListElement.prototype);
+  class SuperDataListElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLDataListElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperDataListElement.prototype, HTMLDataListElement.prototype);
   Object.setPrototypeOf(SuperDataListElement, HTMLDataListElement);
 
-  const SuperModElement = NodeConstructor;
-  Object.setPrototypeOf(SuperModElement.prototype, HTMLModElement.prototype);
+  class SuperModElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLModElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperModElement.prototype, HTMLModElement.prototype);
   Object.setPrototypeOf(SuperModElement, HTMLModElement);
 
-  const SuperDetailsElement = NodeConstructor;
-  Object.setPrototypeOf(SuperDetailsElement.prototype, HTMLDetailsElement.prototype);
+  class SuperDetailsElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLDetailsElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperDetailsElement.prototype, HTMLDetailsElement.prototype);
   Object.setPrototypeOf(SuperDetailsElement, HTMLDetailsElement);
 
-  const SuperDirectoryElement = NodeConstructor;
-  Object.setPrototypeOf(SuperDirectoryElement.prototype, HTMLDirectoryElement.prototype);
+  class SuperDirectoryElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLDirectoryElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperDirectoryElement.prototype, HTMLDirectoryElement.prototype);
   Object.setPrototypeOf(SuperDirectoryElement, HTMLDirectoryElement);
 
-  const SuperDivElement = NodeConstructor;
-  Object.setPrototypeOf(SuperDivElement.prototype, HTMLDivElement.prototype);
+  class SuperDivElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLDivElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperDivElement.prototype, HTMLDivElement.prototype);
   Object.setPrototypeOf(SuperDivElement, HTMLDivElement);
 
-  const SuperDListElement = NodeConstructor;
-  Object.setPrototypeOf(SuperDListElement.prototype, HTMLDListElement.prototype);
+  class SuperDListElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLDListElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperDListElement.prototype, HTMLDListElement.prototype);
   Object.setPrototypeOf(SuperDListElement, HTMLDListElement);
 
-  const SuperEmbedElement = NodeConstructor;
-  Object.setPrototypeOf(SuperEmbedElement.prototype, HTMLEmbedElement.prototype);
+  class SuperEmbedElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLEmbedElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperEmbedElement.prototype, HTMLEmbedElement.prototype);
   Object.setPrototypeOf(SuperEmbedElement, HTMLEmbedElement);
 
-  const SuperFieldSetElement = NodeConstructor;
-  Object.setPrototypeOf(SuperFieldSetElement.prototype, HTMLFieldSetElement.prototype);
+  class SuperFieldSetElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLFieldSetElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperFieldSetElement.prototype, HTMLFieldSetElement.prototype);
   Object.setPrototypeOf(SuperFieldSetElement, HTMLFieldSetElement);
 
-  const SuperFontElement = NodeConstructor;
-  Object.setPrototypeOf(SuperFontElement.prototype, HTMLFontElement.prototype);
+  class SuperFontElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLFontElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperFontElement.prototype, HTMLFontElement.prototype);
   Object.setPrototypeOf(SuperFontElement, HTMLFontElement);
 
-  const SuperFormElement = NodeConstructor;
-  Object.setPrototypeOf(SuperFormElement.prototype, HTMLFormElement.prototype);
+  class SuperFormElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLFormElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperFormElement.prototype, HTMLFormElement.prototype);
   Object.setPrototypeOf(SuperFormElement, HTMLFormElement);
 
-  const SuperFrameElement = NodeConstructor;
-  Object.setPrototypeOf(SuperFrameElement.prototype, HTMLFrameElement.prototype);
+  class SuperFrameElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLFrameElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperFrameElement.prototype, HTMLFrameElement.prototype);
   Object.setPrototypeOf(SuperFrameElement, HTMLFrameElement);
 
-  const SuperFrameSetElement = NodeConstructor;
-  Object.setPrototypeOf(SuperFrameSetElement.prototype, HTMLFrameSetElement.prototype);
+  class SuperFrameSetElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLFrameSetElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperFrameSetElement.prototype, HTMLFrameSetElement.prototype);
   Object.setPrototypeOf(SuperFrameSetElement, HTMLFrameSetElement);
 
-  const SuperHeadingElement = NodeConstructor;
-  Object.setPrototypeOf(SuperHeadingElement.prototype, HTMLHeadingElement.prototype);
+  class SuperHeadingElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLHeadingElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperHeadingElement.prototype, HTMLHeadingElement.prototype);
   Object.setPrototypeOf(SuperHeadingElement, HTMLHeadingElement);
 
-  const SuperHeadElement = NodeConstructor;
-  Object.setPrototypeOf(SuperHeadElement.prototype, HTMLHeadElement.prototype);
+  class SuperHeadElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLHeadElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperHeadElement.prototype, HTMLHeadElement.prototype);
   Object.setPrototypeOf(SuperHeadElement, HTMLHeadElement);
 
-  const SuperHRElement = NodeConstructor;
-  Object.setPrototypeOf(SuperHRElement.prototype, HTMLHRElement.prototype);
+  class SuperHRElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLHRElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperHRElement.prototype, HTMLHRElement.prototype);
   Object.setPrototypeOf(SuperHRElement, HTMLHRElement);
 
-  const SuperHtmlElement = NodeConstructor;
-  Object.setPrototypeOf(SuperHtmlElement.prototype, HTMLHtmlElement.prototype);
+  class SuperHtmlElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLHtmlElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperHtmlElement.prototype, HTMLHtmlElement.prototype);
   Object.setPrototypeOf(SuperHtmlElement, HTMLHtmlElement);
 
-  const SuperIFrameElement = NodeConstructor;
-  Object.setPrototypeOf(SuperIFrameElement.prototype, HTMLIFrameElement.prototype);
+  class SuperIFrameElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLIFrameElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperIFrameElement.prototype, HTMLIFrameElement.prototype);
   Object.setPrototypeOf(SuperIFrameElement, HTMLIFrameElement);
 
-  const SuperImageElement = NodeConstructor;
-  Object.setPrototypeOf(SuperImageElement.prototype, HTMLImageElement.prototype);
+  class SuperImageElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLImageElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperImageElement.prototype, HTMLImageElement.prototype);
   Object.setPrototypeOf(SuperImageElement, HTMLImageElement);
 
-  const SuperInputElement = NodeConstructor;
-  Object.setPrototypeOf(SuperInputElement.prototype, HTMLInputElement.prototype);
+  class SuperInputElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLInputElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperInputElement.prototype, HTMLInputElement.prototype);
   Object.setPrototypeOf(SuperInputElement, HTMLInputElement);
 
-  const SuperLabelElement = NodeConstructor;
-  Object.setPrototypeOf(SuperLabelElement.prototype, HTMLLabelElement.prototype);
+  class SuperLabelElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLLabelElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperLabelElement.prototype, HTMLLabelElement.prototype);
   Object.setPrototypeOf(SuperLabelElement, HTMLLabelElement);
 
-  const SuperLegendElement = NodeConstructor;
-  Object.setPrototypeOf(SuperLegendElement.prototype, HTMLLegendElement.prototype);
+  class SuperLegendElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLLegendElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperLegendElement.prototype, HTMLLegendElement.prototype);
   Object.setPrototypeOf(SuperLegendElement, HTMLLegendElement);
 
-  const SuperLIElement = NodeConstructor;
-  Object.setPrototypeOf(SuperLIElement.prototype, HTMLLIElement.prototype);
+  class SuperLIElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLLIElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperLIElement.prototype, HTMLLIElement.prototype);
   Object.setPrototypeOf(SuperLIElement, HTMLLIElement);
 
-  const SuperLinkElement = NodeConstructor;
-  Object.setPrototypeOf(SuperLinkElement.prototype, HTMLLinkElement.prototype);
+  class SuperLinkElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLLinkElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperLinkElement.prototype, HTMLLinkElement.prototype);
   Object.setPrototypeOf(SuperLinkElement, HTMLLinkElement);
 
-  const SuperPreElement = NodeConstructor;
-  Object.setPrototypeOf(SuperPreElement.prototype, HTMLPreElement.prototype);
+  class SuperPreElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLPreElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperPreElement.prototype, HTMLPreElement.prototype);
   Object.setPrototypeOf(SuperPreElement, HTMLPreElement);
 
-  const SuperMapElement = NodeConstructor;
-  Object.setPrototypeOf(SuperMapElement.prototype, HTMLMapElement.prototype);
+  class SuperMapElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLMapElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperMapElement.prototype, HTMLMapElement.prototype);
   Object.setPrototypeOf(SuperMapElement, HTMLMapElement);
 
-  const SuperMarqueeElement = NodeConstructor;
-  Object.setPrototypeOf(SuperMarqueeElement.prototype, HTMLMarqueeElement.prototype);
+  class SuperMarqueeElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLMarqueeElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperMarqueeElement.prototype, HTMLMarqueeElement.prototype);
   Object.setPrototypeOf(SuperMarqueeElement, HTMLMarqueeElement);
 
-  const SuperMenuElement = NodeConstructor;
-  Object.setPrototypeOf(SuperMenuElement.prototype, HTMLMenuElement.prototype);
+  class SuperMenuElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLMenuElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperMenuElement.prototype, HTMLMenuElement.prototype);
   Object.setPrototypeOf(SuperMenuElement, HTMLMenuElement);
 
-  const SuperMenuItemElement = NodeConstructor;
-  Object.setPrototypeOf(SuperMenuItemElement.prototype, HTMLMenuItemElement.prototype);
+  class SuperMenuItemElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLMenuItemElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperMenuItemElement.prototype, HTMLMenuItemElement.prototype);
   Object.setPrototypeOf(SuperMenuItemElement, HTMLMenuItemElement);
 
-  const SuperMetaElement = NodeConstructor;
-  Object.setPrototypeOf(SuperMetaElement.prototype, HTMLMetaElement.prototype);
+  class SuperMetaElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLMetaElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperMetaElement.prototype, HTMLMetaElement.prototype);
   Object.setPrototypeOf(SuperMetaElement, HTMLMetaElement);
 
-  const SuperMeterElement = NodeConstructor;
-  Object.setPrototypeOf(SuperMeterElement.prototype, HTMLMeterElement.prototype);
+  class SuperMeterElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLMeterElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperMeterElement.prototype, HTMLMeterElement.prototype);
   Object.setPrototypeOf(SuperMeterElement, HTMLMeterElement);
 
-  const SuperObjectElement = NodeConstructor;
-  Object.setPrototypeOf(SuperObjectElement.prototype, HTMLObjectElement.prototype);
+  class SuperObjectElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLObjectElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperObjectElement.prototype, HTMLObjectElement.prototype);
   Object.setPrototypeOf(SuperObjectElement, HTMLObjectElement);
 
-  const SuperOListElement = NodeConstructor;
-  Object.setPrototypeOf(SuperOListElement.prototype, HTMLOListElement.prototype);
+  class SuperOListElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLOListElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperOListElement.prototype, HTMLOListElement.prototype);
   Object.setPrototypeOf(SuperOListElement, HTMLOListElement);
 
-  const SuperOptGroupElement = NodeConstructor;
-  Object.setPrototypeOf(SuperOptGroupElement.prototype, HTMLOptGroupElement.prototype);
+  class SuperOptGroupElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLOptGroupElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperOptGroupElement.prototype, HTMLOptGroupElement.prototype);
   Object.setPrototypeOf(SuperOptGroupElement, HTMLOptGroupElement);
 
-  const SuperOptionElement = NodeConstructor;
-  Object.setPrototypeOf(SuperOptionElement.prototype, HTMLOptionElement.prototype);
+  class SuperOptionElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLOptionElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperOptionElement.prototype, HTMLOptionElement.prototype);
   Object.setPrototypeOf(SuperOptionElement, HTMLOptionElement);
 
-  const SuperOutputElement = NodeConstructor;
-  Object.setPrototypeOf(SuperOutputElement.prototype, HTMLOutputElement.prototype);
+  class SuperOutputElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLOutputElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperOutputElement.prototype, HTMLOutputElement.prototype);
   Object.setPrototypeOf(SuperOutputElement, HTMLOutputElement);
 
-  const SuperParagraphElement = NodeConstructor;
-  Object.setPrototypeOf(SuperParagraphElement.prototype, HTMLParagraphElement.prototype);
+  class SuperParagraphElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLParagraphElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperParagraphElement.prototype, HTMLParagraphElement.prototype);
   Object.setPrototypeOf(SuperParagraphElement, HTMLParagraphElement);
 
-  const SuperParamElement = NodeConstructor;
-  Object.setPrototypeOf(SuperParamElement.prototype, HTMLParamElement.prototype);
+  class SuperParamElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLParamElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperParamElement.prototype, HTMLParamElement.prototype);
   Object.setPrototypeOf(SuperParamElement, HTMLParamElement);
 
-  const SuperPictureElement = NodeConstructor;
-  Object.setPrototypeOf(SuperPictureElement.prototype, HTMLPictureElement.prototype);
+  class SuperPictureElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLPictureElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperPictureElement.prototype, HTMLPictureElement.prototype);
   Object.setPrototypeOf(SuperPictureElement, HTMLPictureElement);
 
-  const SuperProgressElement = NodeConstructor;
-  Object.setPrototypeOf(SuperProgressElement.prototype, HTMLProgressElement.prototype);
+  class SuperProgressElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLProgressElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperProgressElement.prototype, HTMLProgressElement.prototype);
   Object.setPrototypeOf(SuperProgressElement, HTMLProgressElement);
 
-  const SuperScriptElement = NodeConstructor;
-  Object.setPrototypeOf(SuperScriptElement.prototype, HTMLScriptElement.prototype);
+  class SuperScriptElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLScriptElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperScriptElement.prototype, HTMLScriptElement.prototype);
   Object.setPrototypeOf(SuperScriptElement, HTMLScriptElement);
 
-  const SuperSelectElement = NodeConstructor;
-  Object.setPrototypeOf(SuperSelectElement.prototype, HTMLSelectElement.prototype);
+  class SuperSelectElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLSelectElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperSelectElement.prototype, HTMLSelectElement.prototype);
   Object.setPrototypeOf(SuperSelectElement, HTMLSelectElement);
 
-  const SuperSlotElement = NodeConstructor;
-  Object.setPrototypeOf(SuperSlotElement.prototype, HTMLSlotElement.prototype);
+  class SuperSlotElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLSlotElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperSlotElement.prototype, HTMLSlotElement.prototype);
   Object.setPrototypeOf(SuperSlotElement, HTMLSlotElement);
 
-  const SuperSourceElement = NodeConstructor;
-  Object.setPrototypeOf(SuperSourceElement.prototype, HTMLSourceElement.prototype);
+  class SuperSourceElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLSourceElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperSourceElement.prototype, HTMLSourceElement.prototype);
   Object.setPrototypeOf(SuperSourceElement, HTMLSourceElement);
 
-  const SuperSpanElement = NodeConstructor;
-  Object.setPrototypeOf(SuperSpanElement.prototype, HTMLSpanElement.prototype);
+  class SuperSpanElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLSpanElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperSpanElement.prototype, HTMLSpanElement.prototype);
   Object.setPrototypeOf(SuperSpanElement, HTMLSpanElement);
 
-  const SuperStyleElement = NodeConstructor;
-  Object.setPrototypeOf(SuperStyleElement.prototype, HTMLStyleElement.prototype);
+  class SuperStyleElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLStyleElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperStyleElement.prototype, HTMLStyleElement.prototype);
   Object.setPrototypeOf(SuperStyleElement, HTMLStyleElement);
 
-  const SuperTableElement = NodeConstructor;
-  Object.setPrototypeOf(SuperTableElement.prototype, HTMLTableElement.prototype);
+  class SuperTableElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLTableElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperTableElement.prototype, HTMLTableElement.prototype);
   Object.setPrototypeOf(SuperTableElement, HTMLTableElement);
 
-  const SuperTableSectionElement = NodeConstructor;
-  Object.setPrototypeOf(SuperTableSectionElement.prototype, HTMLTableSectionElement.prototype);
+  class SuperTableSectionElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLTableSectionElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperTableSectionElement.prototype, HTMLTableSectionElement.prototype);
   Object.setPrototypeOf(SuperTableSectionElement, HTMLTableSectionElement);
 
-  const SuperTableCellElement = NodeConstructor;
-  Object.setPrototypeOf(SuperTableCellElement.prototype, HTMLTableCellElement.prototype);
+  class SuperTableCellElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLTableCellElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperTableCellElement.prototype, HTMLTableCellElement.prototype);
   Object.setPrototypeOf(SuperTableCellElement, HTMLTableCellElement);
 
-  const SuperTemplateElement = NodeConstructor;
-  Object.setPrototypeOf(SuperTemplateElement.prototype, HTMLTemplateElement.prototype);
+  class SuperTemplateElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLTemplateElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperTemplateElement.prototype, HTMLTemplateElement.prototype);
   Object.setPrototypeOf(SuperTemplateElement, HTMLTemplateElement);
 
-  const SuperTextAreaElement = NodeConstructor;
-  Object.setPrototypeOf(SuperTextAreaElement.prototype, HTMLTextAreaElement.prototype);
+  class SuperTextAreaElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLTextAreaElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperTextAreaElement.prototype, HTMLTextAreaElement.prototype);
   Object.setPrototypeOf(SuperTextAreaElement, HTMLTextAreaElement);
 
-  const SuperTimeElement = NodeConstructor;
-  Object.setPrototypeOf(SuperTimeElement.prototype, HTMLTimeElement.prototype);
+  class SuperTimeElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLTimeElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperTimeElement.prototype, HTMLTimeElement.prototype);
   Object.setPrototypeOf(SuperTimeElement, HTMLTimeElement);
 
-  const SuperTitleElement = NodeConstructor;
-  Object.setPrototypeOf(SuperTitleElement.prototype, HTMLTitleElement.prototype);
+  class SuperTitleElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLTitleElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperTitleElement.prototype, HTMLTitleElement.prototype);
   Object.setPrototypeOf(SuperTitleElement, HTMLTitleElement);
 
-  const SuperTableRowElement = NodeConstructor;
-  Object.setPrototypeOf(SuperTableRowElement.prototype, HTMLTableRowElement.prototype);
+  class SuperTableRowElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLTableRowElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperTableRowElement.prototype, HTMLTableRowElement.prototype);
   Object.setPrototypeOf(SuperTableRowElement, HTMLTableRowElement);
 
-  const SuperTrackElement = NodeConstructor;
-  Object.setPrototypeOf(SuperTrackElement.prototype, HTMLTrackElement.prototype);
+  class SuperTrackElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLTrackElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperTrackElement.prototype, HTMLTrackElement.prototype);
   Object.setPrototypeOf(SuperTrackElement, HTMLTrackElement);
 
-  const SuperUListElement = NodeConstructor;
-  Object.setPrototypeOf(SuperUListElement.prototype, HTMLUListElement.prototype);
+  class SuperUListElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLUListElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperUListElement.prototype, HTMLUListElement.prototype);
   Object.setPrototypeOf(SuperUListElement, HTMLUListElement);
 
-  const SuperVideoElement = NodeConstructor;
-  Object.setPrototypeOf(SuperVideoElement.prototype, HTMLVideoElement.prototype);
+  class SuperVideoElement {
+  	constructor(o) {
+  		if(o) {
+  			o.is_native = false;
+  		} else {
+  			o = {
+  				is_native: true,
+  				from: HTMLVideoElement,
+  			};
+  		}
+  		return new NodeConstructor(this.constructor, o);
+  	}
+  }Object.setPrototypeOf(SuperVideoElement.prototype, HTMLVideoElement.prototype);
   Object.setPrototypeOf(SuperVideoElement, HTMLVideoElement);
 
   class A extends SuperAnchorElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "a";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLAnchorElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "a";
+  		super(o);
   	}
+  }
   class Abbr extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "abbr";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "abbr";
+  		super(o);
   	}
+  }
   class Acronym extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "acronym";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "acronym";
+  		super(o);
   	}
+  }
   class Address extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "address";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "address";
+  		super(o);
   	}
+  }
   class Applet extends SuperUnknownElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "applet";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLUnknownElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "applet";
+  		super(o);
   	}
+  }
   class Area extends SuperAreaElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "area";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLAreaElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "area";
+  		super(o);
   	}
+  }
   class Article extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "article";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "article";
+  		super(o);
   	}
+  }
   class Aside extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "aside";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "aside";
+  		super(o);
   	}
+  }
   class Audio extends SuperAudioElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "audio";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLAudioElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "audio";
+  		super(o);
   	}
+  }
   class B extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "b";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "b";
+  		super(o);
   	}
+  }
   class Base extends SuperBaseElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "base";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLBaseElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "base";
+  		super(o);
   	}
+  }
   class Basefont extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "basefont";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "basefont";
+  		super(o);
   	}
+  }
   class Bdi extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "bdi";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "bdi";
+  		super(o);
   	}
+  }
   class Bdo extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "bdo";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "bdo";
+  		super(o);
   	}
+  }
   class Bgsound extends SuperUnknownElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "bgsound";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLUnknownElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "bgsound";
+  		super(o);
   	}
+  }
   class Big extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "big";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "big";
+  		super(o);
   	}
+  }
   class Blink extends SuperUnknownElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "blink";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLUnknownElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "blink";
+  		super(o);
   	}
+  }
   class Blockquote extends SuperQuoteElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "blockquote";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLQuoteElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "blockquote";
+  		super(o);
   	}
+  }
   class Body extends SuperBodyElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "body";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLBodyElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "body";
+  		super(o);
   	}
+  }
   class Br extends SuperBRElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "br";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLBRElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "br";
+  		super(o);
   	}
+  }
   class Button extends SuperButtonElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "button";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLButtonElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "button";
+  		super(o);
   	}
+  }
   class Canvas extends SuperCanvasElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "canvas";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLCanvasElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "canvas";
+  		super(o);
   	}
+  }
   class Caption extends SuperTableCaptionElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "caption";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLTableCaptionElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "caption";
+  		super(o);
   	}
+  }
   class Center extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "center";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "center";
+  		super(o);
   	}
+  }
   class Cite extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "cite";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "cite";
+  		super(o);
   	}
+  }
   class Code extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "code";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "code";
+  		super(o);
   	}
+  }
   class Col extends SuperTableColElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "col";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLTableColElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "col";
+  		super(o);
   	}
+  }
   class Colgroup extends SuperTableColElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "colgroup";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLTableColElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "colgroup";
+  		super(o);
   	}
+  }
   class Command extends SuperUnknownElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "command";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLUnknownElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "command";
+  		super(o);
   	}
+  }
   class Content extends SuperUnknownElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "content";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLUnknownElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "content";
+  		super(o);
   	}
+  }
   class Data extends SuperDataElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "data";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLDataElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "data";
+  		super(o);
   	}
+  }
   class Datalist extends SuperDataListElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "datalist";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLDataListElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "datalist";
+  		super(o);
   	}
+  }
   class Dd extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "dd";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "dd";
+  		super(o);
   	}
+  }
   class Del extends SuperModElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "del";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLModElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "del";
+  		super(o);
   	}
+  }
   class Details extends SuperDetailsElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "details";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLDetailsElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "details";
+  		super(o);
   	}
+  }
   class Dfn extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "dfn";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "dfn";
+  		super(o);
   	}
+  }
   class Dialog extends SuperUnknownElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "dialog";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLUnknownElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "dialog";
+  		super(o);
   	}
+  }
   class Dir extends SuperDirectoryElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "dir";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLDirectoryElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "dir";
+  		super(o);
   	}
+  }
   class Div extends SuperDivElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "div";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLDivElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "div";
+  		super(o);
   	}
+  }
   class Dl extends SuperDListElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "dl";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLDListElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "dl";
+  		super(o);
   	}
+  }
   class Dt extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "dt";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "dt";
+  		super(o);
   	}
+  }
   class Em extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "em";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "em";
+  		super(o);
   	}
+  }
   class Embed extends SuperEmbedElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "embed";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLEmbedElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "embed";
+  		super(o);
   	}
+  }
   class Fieldset extends SuperFieldSetElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "fieldset";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLFieldSetElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "fieldset";
+  		super(o);
   	}
+  }
   class Figcaption extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "figcaption";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "figcaption";
+  		super(o);
   	}
+  }
   class Figure extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "figure";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "figure";
+  		super(o);
   	}
+  }
   class Font extends SuperFontElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "font";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLFontElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "font";
+  		super(o);
   	}
+  }
   class Footer extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "footer";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "footer";
+  		super(o);
   	}
+  }
   class Form extends SuperFormElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "form";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLFormElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "form";
+  		super(o);
   	}
+  }
   class Frame extends SuperFrameElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "frame";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLFrameElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "frame";
+  		super(o);
   	}
+  }
   class Frameset extends SuperFrameSetElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "frameset";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLFrameSetElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "frameset";
+  		super(o);
   	}
+  }
   class H1 extends SuperHeadingElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "h1";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLHeadingElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "h1";
+  		super(o);
   	}
+  }
   class H2 extends SuperHeadingElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "h2";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLHeadingElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "h2";
+  		super(o);
   	}
+  }
   class H3 extends SuperHeadingElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "h3";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLHeadingElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "h3";
+  		super(o);
   	}
+  }
   class H4 extends SuperHeadingElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "h4";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLHeadingElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "h4";
+  		super(o);
   	}
+  }
   class H5 extends SuperHeadingElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "h5";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLHeadingElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "h5";
+  		super(o);
   	}
+  }
   class H6 extends SuperHeadingElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "h6";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLHeadingElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "h6";
+  		super(o);
   	}
+  }
   class Head extends SuperHeadElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "head";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLHeadElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "head";
+  		super(o);
   	}
+  }
   class Header extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "header";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "header";
+  		super(o);
   	}
+  }
   class Hgroup extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "hgroup";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "hgroup";
+  		super(o);
   	}
+  }
   class Hr extends SuperHRElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "hr";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLHRElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "hr";
+  		super(o);
   	}
+  }
   class Html extends SuperHtmlElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "html";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLHtmlElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "html";
+  		super(o);
   	}
+  }
   class I extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "i";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "i";
+  		super(o);
   	}
+  }
   class Iframe extends SuperIFrameElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "iframe";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLIFrameElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "iframe";
+  		super(o);
   	}
+  }
   class Image extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "image";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "image";
+  		super(o);
   	}
+  }
   class Img extends SuperImageElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "img";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLImageElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "img";
+  		super(o);
   	}
+  }
   class Input extends SuperInputElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "input";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLInputElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "input";
+  		super(o);
   	}
+  }
   class Ins extends SuperModElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "ins";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLModElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "ins";
+  		super(o);
   	}
+  }
   class Isindex extends SuperUnknownElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "isindex";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLUnknownElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "isindex";
+  		super(o);
   	}
+  }
   class Kbd extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "kbd";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "kbd";
+  		super(o);
   	}
+  }
   class Keygen extends SuperUnknownElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "keygen";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLUnknownElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "keygen";
+  		super(o);
   	}
+  }
   class Label extends SuperLabelElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "label";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLLabelElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "label";
+  		super(o);
   	}
+  }
   class Legend extends SuperLegendElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "legend";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLLegendElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "legend";
+  		super(o);
   	}
+  }
   class Li extends SuperLIElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "li";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLLIElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "li";
+  		super(o);
   	}
+  }
   class Link extends SuperLinkElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "link";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLLinkElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "link";
+  		super(o);
   	}
+  }
   class Listing extends SuperPreElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "listing";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLPreElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "listing";
+  		super(o);
   	}
+  }
   class Main extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "main";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "main";
+  		super(o);
   	}
+  }
   class Map extends SuperMapElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "map";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLMapElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "map";
+  		super(o);
   	}
+  }
   class Mark extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "mark";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "mark";
+  		super(o);
   	}
+  }
   class Marquee extends SuperMarqueeElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "marquee";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLMarqueeElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "marquee";
+  		super(o);
   	}
+  }
   class Menu extends SuperMenuElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "menu";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLMenuElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "menu";
+  		super(o);
   	}
+  }
   class Menuitem extends SuperMenuItemElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "menuitem";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLMenuItemElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "menuitem";
+  		super(o);
   	}
+  }
   class Meta extends SuperMetaElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "meta";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLMetaElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "meta";
+  		super(o);
   	}
+  }
   class Meter extends SuperMeterElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "meter";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLMeterElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "meter";
+  		super(o);
   	}
+  }
   class Multicol extends SuperUnknownElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "multicol";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLUnknownElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "multicol";
+  		super(o);
   	}
+  }
   class Nav extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "nav";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "nav";
+  		super(o);
   	}
+  }
   class Nextid extends SuperUnknownElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "nextid";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLUnknownElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "nextid";
+  		super(o);
   	}
+  }
   class Nobr extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "nobr";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "nobr";
+  		super(o);
   	}
+  }
   class Noembed extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "noembed";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "noembed";
+  		super(o);
   	}
+  }
   class Noframes extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "noframes";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "noframes";
+  		super(o);
   	}
+  }
   class Noscript extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "noscript";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "noscript";
+  		super(o);
   	}
+  }
   class Ol extends SuperOListElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "ol";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLOListElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "ol";
+  		super(o);
   	}
+  }
   class Optgroup extends SuperOptGroupElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "optgroup";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLOptGroupElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "optgroup";
+  		super(o);
   	}
+  }
   class Option extends SuperOptionElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "option";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLOptionElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "option";
+  		super(o);
   	}
+  }
   class Output extends SuperOutputElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "output";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLOutputElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "output";
+  		super(o);
   	}
+  }
   class P extends SuperParagraphElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "p";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLParagraphElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "p";
+  		super(o);
   	}
+  }
   class Param extends SuperParamElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "param";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLParamElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "param";
+  		super(o);
   	}
+  }
   class Picture extends SuperPictureElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "picture";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLPictureElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "picture";
+  		super(o);
   	}
+  }
   class Plaintext extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "plaintext";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "plaintext";
+  		super(o);
   	}
+  }
   class Pre extends SuperPreElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "pre";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLPreElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "pre";
+  		super(o);
   	}
+  }
   class Progress extends SuperProgressElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "progress";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLProgressElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "progress";
+  		super(o);
   	}
+  }
   class Q extends SuperQuoteElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "q";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLQuoteElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "q";
+  		super(o);
   	}
+  }
   class Rb extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "rb";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "rb";
+  		super(o);
   	}
+  }
   class Rp extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "rp";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "rp";
+  		super(o);
   	}
+  }
   class Rt extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "rt";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "rt";
+  		super(o);
   	}
+  }
   class Rtc extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "rtc";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "rtc";
+  		super(o);
   	}
+  }
   class Ruby extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "ruby";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "ruby";
+  		super(o);
   	}
+  }
   class S extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "s";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "s";
+  		super(o);
   	}
+  }
   class Samp extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "samp";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "samp";
+  		super(o);
   	}
+  }
   class Script extends SuperScriptElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "script";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLScriptElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "script";
+  		super(o);
   	}
+  }
   class Section extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "section";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "section";
+  		super(o);
   	}
+  }
   class Select extends SuperSelectElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "select";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLSelectElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "select";
+  		super(o);
   	}
+  }
   class Shadow extends SuperUnknownElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "shadow";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLUnknownElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "shadow";
+  		super(o);
   	}
+  }
   class Slot extends SuperSlotElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "slot";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLSlotElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "slot";
+  		super(o);
   	}
+  }
   class Small extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "small";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "small";
+  		super(o);
   	}
+  }
   class Source extends SuperSourceElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "source";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLSourceElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "source";
+  		super(o);
   	}
+  }
   class Spacer extends SuperUnknownElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "spacer";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLUnknownElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "spacer";
+  		super(o);
   	}
+  }
   class Span extends SuperSpanElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "span";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLSpanElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "span";
+  		super(o);
   	}
+  }
   class Strike extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "strike";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "strike";
+  		super(o);
   	}
+  }
   class Strong extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "strong";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "strong";
+  		super(o);
   	}
+  }
   class Style extends SuperStyleElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "style";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLStyleElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "style";
+  		super(o);
   	}
+  }
   class Sub extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "sub";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "sub";
+  		super(o);
   	}
+  }
   class Summary extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "summary";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "summary";
+  		super(o);
   	}
+  }
   class Sup extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "sup";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "sup";
+  		super(o);
   	}
+  }
   class Table extends SuperTableElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "table";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLTableElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "table";
+  		super(o);
   	}
+  }
   class Tbody extends SuperTableSectionElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "tbody";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLTableSectionElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "tbody";
+  		super(o);
   	}
+  }
   class Td extends SuperTableCellElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "td";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLTableCellElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "td";
+  		super(o);
   	}
+  }
   class Template extends SuperTemplateElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "template";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLTemplateElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "template";
+  		super(o);
   	}
+  }
   class Textarea extends SuperTextAreaElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "textarea";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLTextAreaElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "textarea";
+  		super(o);
   	}
+  }
   class Tfoot extends SuperTableSectionElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "tfoot";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLTableSectionElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "tfoot";
+  		super(o);
   	}
+  }
   class Th extends SuperTableCellElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "th";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLTableCellElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "th";
+  		super(o);
   	}
+  }
   class Thead extends SuperTableSectionElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "thead";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLTableSectionElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "thead";
+  		super(o);
   	}
+  }
   class Time extends SuperTimeElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "time";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLTimeElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "time";
+  		super(o);
   	}
+  }
   class Title extends SuperTitleElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "title";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLTitleElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "title";
+  		super(o);
   	}
+  }
   class Tr extends SuperTableRowElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "tr";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLTableRowElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "tr";
+  		super(o);
   	}
+  }
   class Track extends SuperTrackElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "track";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLTrackElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "track";
+  		super(o);
   	}
+  }
   class Tt extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "tt";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "tt";
+  		super(o);
   	}
+  }
   class U extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "u";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "u";
+  		super(o);
   	}
+  }
   class Ul extends SuperUListElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "ul";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLUListElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "ul";
+  		super(o);
   	}
+  }
   class Var extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "var";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "var";
+  		super(o);
   	}
+  }
   class Video extends SuperVideoElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "video";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLVideoElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "video";
+  		super(o);
   	}
+  }
   class Wbr extends SuperElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "wbr";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "wbr";
+  		super(o);
   	}
+  }
   class Xmp extends SuperPreElement {
-  		constructor(o) {
-  			if(o) {
-  				o.tag = "xmp";
-  				o.is_native = false;
-  			} else {
-  				o = {
-  					is_native: true,
-  					from: HTMLPreElement,
-  				};
-  			}
-  			super(o);
-  		}
+  	constructor(o) {
+  		if(o) o.tag = "xmp";
+  		super(o);
   	}
+  }
 
   exports.A = A;
   exports.Abbr = Abbr;
@@ -2598,4 +2182,4 @@ var Igniter = (function (exports, Object) {
 
   return exports;
 
-}({}, Object));
+}({}));

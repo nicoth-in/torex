@@ -18,6 +18,15 @@ Igniter is rapid and powerful framework. Major features are:
 
 ## Igniter in examples
 
+### Construction
+
+The core feature is that **Igniter element == DOM element**.
+So, you can construct elements and attach them like any other element.
+```
+let { Div } = Igniter;
+document.body.appendChild(new Div({}));
+```
+
 ### Shared storage
 
 Shared storage is a build-in class attached to every Igniter element.

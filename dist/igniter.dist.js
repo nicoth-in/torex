@@ -55,64 +55,42 @@ var Igniter = (function (exports) {
   }
 
   class NodeConstructor {
-  	constructor(c, t) {
-    	var answer;
-  		this.c = c;
-  		// If this is a script call
-    	if(!t.is_native) {
-      	if(t.custom) {
-  				// If we want a custom el
-  				if(this.checkSelfConstruction(t.tag)) {
-  					console.error("You can't customize default elements. Create a new class and extend this element.");
-  				} else if(!customElements.get(t.custom)) {
-  					// If it not exists try to create
-  					try {
-  						this.customize(t.custom, t.tag);
-  						answer = document.createElement(t.custom);
-  					}
-  					catch(e) {
-  						console.error(e);
-  					}
-  				} else {
-  					// If it exists just create
-  					console.error("Custom element", t.custom, "already exists. Created with prev constructor.");
-  					answer = document.createElement(t.custom);
+  	constructor(ray) {
+  		this.c = ray.c;
+  		switch (ray.type) {
+  			case "native":
+  				break;
+  			case "tag":
+  				if(!customElements.get(ray.custom)) {
+  					this.customize(ray.custom, ray.tag);
   				}
-        } else {
-  				// If this is not a custom element
-        	t.custom = Randomize();
-        	while(customElements.get(t.custom)) {
-          	t.custom = Randomize();
-          }
-          t.custom = "igniter-"+t.custom;
-  				// If it is not a default one
-  				if(!this.checkSelfConstruction(t.tag)) {
+  				break;
+  			case "custom":
+  				if(!customElements.get(ray.custom)) {
   					try {
-  						this.customize(t.custom, t.tag);
-  						answer = document.createElement(t.tag, { extends: t.custom });
+  						this.customize(ray.custom, ray.tag);
   					}
   					catch(e) {
   						console.error(e);
   					}
   				}
-        }
-  			if(!answer) {
-  				t.custom = "igniter-"+t.tag;
-  				// If it is a default constructor
-  				if(this.checkSelfConstruction(t.tag)) {
-  					if(!customElements.get(t.custom)) this.customize(t.custom, t.tag);
-  					answer = document.createElement(t.tag, { extends: t.custom });
-  				} else {
-  					console.error("Can't create an element.");
+  				break;
+  			case "default":
+  				try {
+  					this.customize("igniter-"+ray.custom, ray.tag);
   				}
-  			}
-      } else {
-  			// If this is a DOM call
-  			answer = Reflect.construct(t.from, [], this.c);
+  				catch(e) {
+  					console.error(e);
+  				}
+  				break;
   		}
-  		// Set shared storage
+  		let answer = Reflect.construct(ray.from, [], ray.c);
+  		if(ray.attr) {
+  			for(let v in ray.attr) {
+  				answer.setAttribute(v, ray.attr[v]);
+  			}
+  		}
   		if(answer) this.storageSet(answer);
-
       return answer;
     }
     customize(name, from) {
@@ -121,1915 +99,1595 @@ var Igniter = (function (exports) {
     storageSet(node) {
     	node.sharedStorage = new SharedStorage(node);
     }
-  	/* Checks if it was a default node constructor by cheking prototype level */
-  	checkSelfConstruction(tag) {
-  		return (this.c.name.toLowerCase() == tag.toLowerCase());
+  }
+
+  class Ray {
+  	constructor(options) {
+  		this.tag = options.tag;
+  		this.c = options.c;
+  		this.from = options.from;
+  		if(options.native) {
+  			this.type = "native";
+  		} else if(this.c.name.toLowerCase() == this.tag.toLowerCase()) {
+  			if(this.custom) console.error("You can't customize default elements. Create a new class and extend this element.");
+  			this.type = "tag";
+  			this.custom = "igniter-"+this.tag;
+  		} else if(options.custom) {
+  			this.type = "custom";
+  			this.custom = options.custom;
+  		} else {
+  			this.type = "default";
+  			this.custom = false;
+  			this.genCustom();
+  		}
+  		if(options.attr) this.attr = options.attr;
+  	}
+  	genCustom() {
+  		while(customElements.get(this.custom)||(!this.custom)) {
+  			this.custom = Randomize();
+  		}
   	}
   }
 
-  class SuperAnchorElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLAnchorElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperAnchorElement.prototype, HTMLAnchorElement.prototype);
-  Object.setPrototypeOf(SuperAnchorElement, HTMLAnchorElement);
-
-  class SuperElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperElement.prototype, HTMLElement.prototype);
-  Object.setPrototypeOf(SuperElement, HTMLElement);
-
-  class SuperUnknownElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLUnknownElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperUnknownElement.prototype, HTMLUnknownElement.prototype);
-  Object.setPrototypeOf(SuperUnknownElement, HTMLUnknownElement);
-
-  class SuperAreaElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLAreaElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperAreaElement.prototype, HTMLAreaElement.prototype);
-  Object.setPrototypeOf(SuperAreaElement, HTMLAreaElement);
-
-  class SuperAudioElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLAudioElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperAudioElement.prototype, HTMLAudioElement.prototype);
-  Object.setPrototypeOf(SuperAudioElement, HTMLAudioElement);
-
-  class SuperBaseElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLBaseElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperBaseElement.prototype, HTMLBaseElement.prototype);
-  Object.setPrototypeOf(SuperBaseElement, HTMLBaseElement);
-
-  class SuperQuoteElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLQuoteElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperQuoteElement.prototype, HTMLQuoteElement.prototype);
-  Object.setPrototypeOf(SuperQuoteElement, HTMLQuoteElement);
-
-  class SuperBodyElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLBodyElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperBodyElement.prototype, HTMLBodyElement.prototype);
-  Object.setPrototypeOf(SuperBodyElement, HTMLBodyElement);
-
-  class SuperBRElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLBRElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperBRElement.prototype, HTMLBRElement.prototype);
-  Object.setPrototypeOf(SuperBRElement, HTMLBRElement);
-
-  class SuperButtonElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLButtonElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperButtonElement.prototype, HTMLButtonElement.prototype);
-  Object.setPrototypeOf(SuperButtonElement, HTMLButtonElement);
-
-  class SuperCanvasElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLCanvasElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperCanvasElement.prototype, HTMLCanvasElement.prototype);
-  Object.setPrototypeOf(SuperCanvasElement, HTMLCanvasElement);
-
-  class SuperTableCaptionElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLTableCaptionElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperTableCaptionElement.prototype, HTMLTableCaptionElement.prototype);
-  Object.setPrototypeOf(SuperTableCaptionElement, HTMLTableCaptionElement);
-
-  class SuperTableColElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLTableColElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperTableColElement.prototype, HTMLTableColElement.prototype);
-  Object.setPrototypeOf(SuperTableColElement, HTMLTableColElement);
-
-  class SuperDataElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLDataElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperDataElement.prototype, HTMLDataElement.prototype);
-  Object.setPrototypeOf(SuperDataElement, HTMLDataElement);
-
-  class SuperDataListElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLDataListElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperDataListElement.prototype, HTMLDataListElement.prototype);
-  Object.setPrototypeOf(SuperDataListElement, HTMLDataListElement);
-
-  class SuperModElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLModElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperModElement.prototype, HTMLModElement.prototype);
-  Object.setPrototypeOf(SuperModElement, HTMLModElement);
-
-  class SuperDetailsElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLDetailsElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperDetailsElement.prototype, HTMLDetailsElement.prototype);
-  Object.setPrototypeOf(SuperDetailsElement, HTMLDetailsElement);
-
-  class SuperDirectoryElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLDirectoryElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperDirectoryElement.prototype, HTMLDirectoryElement.prototype);
-  Object.setPrototypeOf(SuperDirectoryElement, HTMLDirectoryElement);
-
-  class SuperDivElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLDivElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperDivElement.prototype, HTMLDivElement.prototype);
-  Object.setPrototypeOf(SuperDivElement, HTMLDivElement);
-
-  class SuperDListElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLDListElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperDListElement.prototype, HTMLDListElement.prototype);
-  Object.setPrototypeOf(SuperDListElement, HTMLDListElement);
-
-  class SuperEmbedElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLEmbedElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperEmbedElement.prototype, HTMLEmbedElement.prototype);
-  Object.setPrototypeOf(SuperEmbedElement, HTMLEmbedElement);
-
-  class SuperFieldSetElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLFieldSetElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperFieldSetElement.prototype, HTMLFieldSetElement.prototype);
-  Object.setPrototypeOf(SuperFieldSetElement, HTMLFieldSetElement);
-
-  class SuperFontElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLFontElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperFontElement.prototype, HTMLFontElement.prototype);
-  Object.setPrototypeOf(SuperFontElement, HTMLFontElement);
-
-  class SuperFormElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLFormElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperFormElement.prototype, HTMLFormElement.prototype);
-  Object.setPrototypeOf(SuperFormElement, HTMLFormElement);
-
-  class SuperFrameElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLFrameElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperFrameElement.prototype, HTMLFrameElement.prototype);
-  Object.setPrototypeOf(SuperFrameElement, HTMLFrameElement);
-
-  class SuperFrameSetElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLFrameSetElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperFrameSetElement.prototype, HTMLFrameSetElement.prototype);
-  Object.setPrototypeOf(SuperFrameSetElement, HTMLFrameSetElement);
-
-  class SuperHeadingElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLHeadingElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperHeadingElement.prototype, HTMLHeadingElement.prototype);
-  Object.setPrototypeOf(SuperHeadingElement, HTMLHeadingElement);
-
-  class SuperHeadElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLHeadElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperHeadElement.prototype, HTMLHeadElement.prototype);
-  Object.setPrototypeOf(SuperHeadElement, HTMLHeadElement);
-
-  class SuperHRElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLHRElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperHRElement.prototype, HTMLHRElement.prototype);
-  Object.setPrototypeOf(SuperHRElement, HTMLHRElement);
-
-  class SuperHtmlElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLHtmlElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperHtmlElement.prototype, HTMLHtmlElement.prototype);
-  Object.setPrototypeOf(SuperHtmlElement, HTMLHtmlElement);
-
-  class SuperIFrameElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLIFrameElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperIFrameElement.prototype, HTMLIFrameElement.prototype);
-  Object.setPrototypeOf(SuperIFrameElement, HTMLIFrameElement);
-
-  class SuperImageElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLImageElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperImageElement.prototype, HTMLImageElement.prototype);
-  Object.setPrototypeOf(SuperImageElement, HTMLImageElement);
-
-  class SuperInputElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLInputElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperInputElement.prototype, HTMLInputElement.prototype);
-  Object.setPrototypeOf(SuperInputElement, HTMLInputElement);
-
-  class SuperLabelElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLLabelElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperLabelElement.prototype, HTMLLabelElement.prototype);
-  Object.setPrototypeOf(SuperLabelElement, HTMLLabelElement);
-
-  class SuperLegendElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLLegendElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperLegendElement.prototype, HTMLLegendElement.prototype);
-  Object.setPrototypeOf(SuperLegendElement, HTMLLegendElement);
-
-  class SuperLIElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLLIElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperLIElement.prototype, HTMLLIElement.prototype);
-  Object.setPrototypeOf(SuperLIElement, HTMLLIElement);
-
-  class SuperLinkElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLLinkElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperLinkElement.prototype, HTMLLinkElement.prototype);
-  Object.setPrototypeOf(SuperLinkElement, HTMLLinkElement);
-
-  class SuperPreElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLPreElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperPreElement.prototype, HTMLPreElement.prototype);
-  Object.setPrototypeOf(SuperPreElement, HTMLPreElement);
-
-  class SuperMapElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLMapElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperMapElement.prototype, HTMLMapElement.prototype);
-  Object.setPrototypeOf(SuperMapElement, HTMLMapElement);
-
-  class SuperMarqueeElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLMarqueeElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperMarqueeElement.prototype, HTMLMarqueeElement.prototype);
-  Object.setPrototypeOf(SuperMarqueeElement, HTMLMarqueeElement);
-
-  class SuperMenuElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLMenuElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperMenuElement.prototype, HTMLMenuElement.prototype);
-  Object.setPrototypeOf(SuperMenuElement, HTMLMenuElement);
-
-  class SuperMenuItemElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLMenuItemElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperMenuItemElement.prototype, HTMLMenuItemElement.prototype);
-  Object.setPrototypeOf(SuperMenuItemElement, HTMLMenuItemElement);
-
-  class SuperMetaElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLMetaElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperMetaElement.prototype, HTMLMetaElement.prototype);
-  Object.setPrototypeOf(SuperMetaElement, HTMLMetaElement);
-
-  class SuperMeterElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLMeterElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperMeterElement.prototype, HTMLMeterElement.prototype);
-  Object.setPrototypeOf(SuperMeterElement, HTMLMeterElement);
-
-  class SuperObjectElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLObjectElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperObjectElement.prototype, HTMLObjectElement.prototype);
-  Object.setPrototypeOf(SuperObjectElement, HTMLObjectElement);
-
-  class SuperOListElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLOListElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperOListElement.prototype, HTMLOListElement.prototype);
-  Object.setPrototypeOf(SuperOListElement, HTMLOListElement);
-
-  class SuperOptGroupElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLOptGroupElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperOptGroupElement.prototype, HTMLOptGroupElement.prototype);
-  Object.setPrototypeOf(SuperOptGroupElement, HTMLOptGroupElement);
-
-  class SuperOptionElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLOptionElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperOptionElement.prototype, HTMLOptionElement.prototype);
-  Object.setPrototypeOf(SuperOptionElement, HTMLOptionElement);
-
-  class SuperOutputElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLOutputElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperOutputElement.prototype, HTMLOutputElement.prototype);
-  Object.setPrototypeOf(SuperOutputElement, HTMLOutputElement);
-
-  class SuperParagraphElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLParagraphElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperParagraphElement.prototype, HTMLParagraphElement.prototype);
-  Object.setPrototypeOf(SuperParagraphElement, HTMLParagraphElement);
-
-  class SuperParamElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLParamElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperParamElement.prototype, HTMLParamElement.prototype);
-  Object.setPrototypeOf(SuperParamElement, HTMLParamElement);
-
-  class SuperPictureElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLPictureElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperPictureElement.prototype, HTMLPictureElement.prototype);
-  Object.setPrototypeOf(SuperPictureElement, HTMLPictureElement);
-
-  class SuperProgressElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLProgressElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperProgressElement.prototype, HTMLProgressElement.prototype);
-  Object.setPrototypeOf(SuperProgressElement, HTMLProgressElement);
-
-  class SuperScriptElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLScriptElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperScriptElement.prototype, HTMLScriptElement.prototype);
-  Object.setPrototypeOf(SuperScriptElement, HTMLScriptElement);
-
-  class SuperSelectElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLSelectElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperSelectElement.prototype, HTMLSelectElement.prototype);
-  Object.setPrototypeOf(SuperSelectElement, HTMLSelectElement);
-
-  class SuperSlotElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLSlotElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperSlotElement.prototype, HTMLSlotElement.prototype);
-  Object.setPrototypeOf(SuperSlotElement, HTMLSlotElement);
-
-  class SuperSourceElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLSourceElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperSourceElement.prototype, HTMLSourceElement.prototype);
-  Object.setPrototypeOf(SuperSourceElement, HTMLSourceElement);
-
-  class SuperSpanElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLSpanElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperSpanElement.prototype, HTMLSpanElement.prototype);
-  Object.setPrototypeOf(SuperSpanElement, HTMLSpanElement);
-
-  class SuperStyleElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLStyleElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperStyleElement.prototype, HTMLStyleElement.prototype);
-  Object.setPrototypeOf(SuperStyleElement, HTMLStyleElement);
-
-  class SuperTableElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLTableElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperTableElement.prototype, HTMLTableElement.prototype);
-  Object.setPrototypeOf(SuperTableElement, HTMLTableElement);
-
-  class SuperTableSectionElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLTableSectionElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperTableSectionElement.prototype, HTMLTableSectionElement.prototype);
-  Object.setPrototypeOf(SuperTableSectionElement, HTMLTableSectionElement);
-
-  class SuperTableCellElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLTableCellElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperTableCellElement.prototype, HTMLTableCellElement.prototype);
-  Object.setPrototypeOf(SuperTableCellElement, HTMLTableCellElement);
-
-  class SuperTemplateElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLTemplateElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperTemplateElement.prototype, HTMLTemplateElement.prototype);
-  Object.setPrototypeOf(SuperTemplateElement, HTMLTemplateElement);
-
-  class SuperTextAreaElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLTextAreaElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperTextAreaElement.prototype, HTMLTextAreaElement.prototype);
-  Object.setPrototypeOf(SuperTextAreaElement, HTMLTextAreaElement);
-
-  class SuperTimeElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLTimeElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperTimeElement.prototype, HTMLTimeElement.prototype);
-  Object.setPrototypeOf(SuperTimeElement, HTMLTimeElement);
-
-  class SuperTitleElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLTitleElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperTitleElement.prototype, HTMLTitleElement.prototype);
-  Object.setPrototypeOf(SuperTitleElement, HTMLTitleElement);
-
-  class SuperTableRowElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLTableRowElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperTableRowElement.prototype, HTMLTableRowElement.prototype);
-  Object.setPrototypeOf(SuperTableRowElement, HTMLTableRowElement);
-
-  class SuperTrackElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLTrackElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperTrackElement.prototype, HTMLTrackElement.prototype);
-  Object.setPrototypeOf(SuperTrackElement, HTMLTrackElement);
-
-  class SuperUListElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLUListElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperUListElement.prototype, HTMLUListElement.prototype);
-  Object.setPrototypeOf(SuperUListElement, HTMLUListElement);
-
-  class SuperVideoElement {
-  	constructor(o) {
-  		if(o) {
-  			o.is_native = false;
-  		} else {
-  			o = {
-  				is_native: true,
-  				from: HTMLVideoElement,
-  			};
-  		}
-  		return new NodeConstructor(this.constructor, o);
-  	}
-  }Object.setPrototypeOf(SuperVideoElement.prototype, HTMLVideoElement.prototype);
-  Object.setPrototypeOf(SuperVideoElement, HTMLVideoElement);
-
-  class A extends SuperAnchorElement {
+  class IgniterAnchorElement {
+  	constructor(inp) {
+  		let from = HTMLAnchorElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterAnchorElement.prototype, HTMLAnchorElement.prototype);
+  Object.setPrototypeOf(IgniterAnchorElement, HTMLAnchorElement);
+
+  class IgniterElement {
+  	constructor(inp) {
+  		let from = HTMLElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterElement.prototype, HTMLElement.prototype);
+  Object.setPrototypeOf(IgniterElement, HTMLElement);
+
+  class IgniterUnknownElement {
+  	constructor(inp) {
+  		let from = HTMLUnknownElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterUnknownElement.prototype, HTMLUnknownElement.prototype);
+  Object.setPrototypeOf(IgniterUnknownElement, HTMLUnknownElement);
+
+  class IgniterAreaElement {
+  	constructor(inp) {
+  		let from = HTMLAreaElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterAreaElement.prototype, HTMLAreaElement.prototype);
+  Object.setPrototypeOf(IgniterAreaElement, HTMLAreaElement);
+
+  class IgniterAudioElement {
+  	constructor(inp) {
+  		let from = HTMLAudioElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterAudioElement.prototype, HTMLAudioElement.prototype);
+  Object.setPrototypeOf(IgniterAudioElement, HTMLAudioElement);
+
+  class IgniterBaseElement {
+  	constructor(inp) {
+  		let from = HTMLBaseElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterBaseElement.prototype, HTMLBaseElement.prototype);
+  Object.setPrototypeOf(IgniterBaseElement, HTMLBaseElement);
+
+  class IgniterQuoteElement {
+  	constructor(inp) {
+  		let from = HTMLQuoteElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterQuoteElement.prototype, HTMLQuoteElement.prototype);
+  Object.setPrototypeOf(IgniterQuoteElement, HTMLQuoteElement);
+
+  class IgniterBodyElement {
+  	constructor(inp) {
+  		let from = HTMLBodyElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterBodyElement.prototype, HTMLBodyElement.prototype);
+  Object.setPrototypeOf(IgniterBodyElement, HTMLBodyElement);
+
+  class IgniterBRElement {
+  	constructor(inp) {
+  		let from = HTMLBRElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterBRElement.prototype, HTMLBRElement.prototype);
+  Object.setPrototypeOf(IgniterBRElement, HTMLBRElement);
+
+  class IgniterButtonElement {
+  	constructor(inp) {
+  		let from = HTMLButtonElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterButtonElement.prototype, HTMLButtonElement.prototype);
+  Object.setPrototypeOf(IgniterButtonElement, HTMLButtonElement);
+
+  class IgniterCanvasElement {
+  	constructor(inp) {
+  		let from = HTMLCanvasElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterCanvasElement.prototype, HTMLCanvasElement.prototype);
+  Object.setPrototypeOf(IgniterCanvasElement, HTMLCanvasElement);
+
+  class IgniterTableCaptionElement {
+  	constructor(inp) {
+  		let from = HTMLTableCaptionElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterTableCaptionElement.prototype, HTMLTableCaptionElement.prototype);
+  Object.setPrototypeOf(IgniterTableCaptionElement, HTMLTableCaptionElement);
+
+  class IgniterTableColElement {
+  	constructor(inp) {
+  		let from = HTMLTableColElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterTableColElement.prototype, HTMLTableColElement.prototype);
+  Object.setPrototypeOf(IgniterTableColElement, HTMLTableColElement);
+
+  class IgniterDataElement {
+  	constructor(inp) {
+  		let from = HTMLDataElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterDataElement.prototype, HTMLDataElement.prototype);
+  Object.setPrototypeOf(IgniterDataElement, HTMLDataElement);
+
+  class IgniterDataListElement {
+  	constructor(inp) {
+  		let from = HTMLDataListElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterDataListElement.prototype, HTMLDataListElement.prototype);
+  Object.setPrototypeOf(IgniterDataListElement, HTMLDataListElement);
+
+  class IgniterModElement {
+  	constructor(inp) {
+  		let from = HTMLModElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterModElement.prototype, HTMLModElement.prototype);
+  Object.setPrototypeOf(IgniterModElement, HTMLModElement);
+
+  class IgniterDetailsElement {
+  	constructor(inp) {
+  		let from = HTMLDetailsElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterDetailsElement.prototype, HTMLDetailsElement.prototype);
+  Object.setPrototypeOf(IgniterDetailsElement, HTMLDetailsElement);
+
+  class IgniterDirectoryElement {
+  	constructor(inp) {
+  		let from = HTMLDirectoryElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterDirectoryElement.prototype, HTMLDirectoryElement.prototype);
+  Object.setPrototypeOf(IgniterDirectoryElement, HTMLDirectoryElement);
+
+  class IgniterDivElement {
+  	constructor(inp) {
+  		let from = HTMLDivElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterDivElement.prototype, HTMLDivElement.prototype);
+  Object.setPrototypeOf(IgniterDivElement, HTMLDivElement);
+
+  class IgniterDListElement {
+  	constructor(inp) {
+  		let from = HTMLDListElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterDListElement.prototype, HTMLDListElement.prototype);
+  Object.setPrototypeOf(IgniterDListElement, HTMLDListElement);
+
+  class IgniterEmbedElement {
+  	constructor(inp) {
+  		let from = HTMLEmbedElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterEmbedElement.prototype, HTMLEmbedElement.prototype);
+  Object.setPrototypeOf(IgniterEmbedElement, HTMLEmbedElement);
+
+  class IgniterFieldSetElement {
+  	constructor(inp) {
+  		let from = HTMLFieldSetElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterFieldSetElement.prototype, HTMLFieldSetElement.prototype);
+  Object.setPrototypeOf(IgniterFieldSetElement, HTMLFieldSetElement);
+
+  class IgniterFontElement {
+  	constructor(inp) {
+  		let from = HTMLFontElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterFontElement.prototype, HTMLFontElement.prototype);
+  Object.setPrototypeOf(IgniterFontElement, HTMLFontElement);
+
+  class IgniterFormElement {
+  	constructor(inp) {
+  		let from = HTMLFormElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterFormElement.prototype, HTMLFormElement.prototype);
+  Object.setPrototypeOf(IgniterFormElement, HTMLFormElement);
+
+  class IgniterFrameElement {
+  	constructor(inp) {
+  		let from = HTMLFrameElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterFrameElement.prototype, HTMLFrameElement.prototype);
+  Object.setPrototypeOf(IgniterFrameElement, HTMLFrameElement);
+
+  class IgniterFrameSetElement {
+  	constructor(inp) {
+  		let from = HTMLFrameSetElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterFrameSetElement.prototype, HTMLFrameSetElement.prototype);
+  Object.setPrototypeOf(IgniterFrameSetElement, HTMLFrameSetElement);
+
+  class IgniterHeadingElement {
+  	constructor(inp) {
+  		let from = HTMLHeadingElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterHeadingElement.prototype, HTMLHeadingElement.prototype);
+  Object.setPrototypeOf(IgniterHeadingElement, HTMLHeadingElement);
+
+  class IgniterHeadElement {
+  	constructor(inp) {
+  		let from = HTMLHeadElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterHeadElement.prototype, HTMLHeadElement.prototype);
+  Object.setPrototypeOf(IgniterHeadElement, HTMLHeadElement);
+
+  class IgniterHRElement {
+  	constructor(inp) {
+  		let from = HTMLHRElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterHRElement.prototype, HTMLHRElement.prototype);
+  Object.setPrototypeOf(IgniterHRElement, HTMLHRElement);
+
+  class IgniterHtmlElement {
+  	constructor(inp) {
+  		let from = HTMLHtmlElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterHtmlElement.prototype, HTMLHtmlElement.prototype);
+  Object.setPrototypeOf(IgniterHtmlElement, HTMLHtmlElement);
+
+  class IgniterIFrameElement {
+  	constructor(inp) {
+  		let from = HTMLIFrameElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterIFrameElement.prototype, HTMLIFrameElement.prototype);
+  Object.setPrototypeOf(IgniterIFrameElement, HTMLIFrameElement);
+
+  class IgniterImageElement {
+  	constructor(inp) {
+  		let from = HTMLImageElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterImageElement.prototype, HTMLImageElement.prototype);
+  Object.setPrototypeOf(IgniterImageElement, HTMLImageElement);
+
+  class IgniterInputElement {
+  	constructor(inp) {
+  		let from = HTMLInputElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterInputElement.prototype, HTMLInputElement.prototype);
+  Object.setPrototypeOf(IgniterInputElement, HTMLInputElement);
+
+  class IgniterLabelElement {
+  	constructor(inp) {
+  		let from = HTMLLabelElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterLabelElement.prototype, HTMLLabelElement.prototype);
+  Object.setPrototypeOf(IgniterLabelElement, HTMLLabelElement);
+
+  class IgniterLegendElement {
+  	constructor(inp) {
+  		let from = HTMLLegendElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterLegendElement.prototype, HTMLLegendElement.prototype);
+  Object.setPrototypeOf(IgniterLegendElement, HTMLLegendElement);
+
+  class IgniterLIElement {
+  	constructor(inp) {
+  		let from = HTMLLIElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterLIElement.prototype, HTMLLIElement.prototype);
+  Object.setPrototypeOf(IgniterLIElement, HTMLLIElement);
+
+  class IgniterLinkElement {
+  	constructor(inp) {
+  		let from = HTMLLinkElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterLinkElement.prototype, HTMLLinkElement.prototype);
+  Object.setPrototypeOf(IgniterLinkElement, HTMLLinkElement);
+
+  class IgniterPreElement {
+  	constructor(inp) {
+  		let from = HTMLPreElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterPreElement.prototype, HTMLPreElement.prototype);
+  Object.setPrototypeOf(IgniterPreElement, HTMLPreElement);
+
+  class IgniterMapElement {
+  	constructor(inp) {
+  		let from = HTMLMapElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterMapElement.prototype, HTMLMapElement.prototype);
+  Object.setPrototypeOf(IgniterMapElement, HTMLMapElement);
+
+  class IgniterMarqueeElement {
+  	constructor(inp) {
+  		let from = HTMLMarqueeElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterMarqueeElement.prototype, HTMLMarqueeElement.prototype);
+  Object.setPrototypeOf(IgniterMarqueeElement, HTMLMarqueeElement);
+
+  class IgniterMenuElement {
+  	constructor(inp) {
+  		let from = HTMLMenuElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterMenuElement.prototype, HTMLMenuElement.prototype);
+  Object.setPrototypeOf(IgniterMenuElement, HTMLMenuElement);
+
+  class IgniterMenuItemElement {
+  	constructor(inp) {
+  		let from = HTMLMenuItemElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterMenuItemElement.prototype, HTMLMenuItemElement.prototype);
+  Object.setPrototypeOf(IgniterMenuItemElement, HTMLMenuItemElement);
+
+  class IgniterMetaElement {
+  	constructor(inp) {
+  		let from = HTMLMetaElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterMetaElement.prototype, HTMLMetaElement.prototype);
+  Object.setPrototypeOf(IgniterMetaElement, HTMLMetaElement);
+
+  class IgniterMeterElement {
+  	constructor(inp) {
+  		let from = HTMLMeterElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterMeterElement.prototype, HTMLMeterElement.prototype);
+  Object.setPrototypeOf(IgniterMeterElement, HTMLMeterElement);
+
+  class IgniterObjectElement {
+  	constructor(inp) {
+  		let from = HTMLObjectElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterObjectElement.prototype, HTMLObjectElement.prototype);
+  Object.setPrototypeOf(IgniterObjectElement, HTMLObjectElement);
+
+  class IgniterOListElement {
+  	constructor(inp) {
+  		let from = HTMLOListElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterOListElement.prototype, HTMLOListElement.prototype);
+  Object.setPrototypeOf(IgniterOListElement, HTMLOListElement);
+
+  class IgniterOptGroupElement {
+  	constructor(inp) {
+  		let from = HTMLOptGroupElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterOptGroupElement.prototype, HTMLOptGroupElement.prototype);
+  Object.setPrototypeOf(IgniterOptGroupElement, HTMLOptGroupElement);
+
+  class IgniterOptionElement {
+  	constructor(inp) {
+  		let from = HTMLOptionElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterOptionElement.prototype, HTMLOptionElement.prototype);
+  Object.setPrototypeOf(IgniterOptionElement, HTMLOptionElement);
+
+  class IgniterOutputElement {
+  	constructor(inp) {
+  		let from = HTMLOutputElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterOutputElement.prototype, HTMLOutputElement.prototype);
+  Object.setPrototypeOf(IgniterOutputElement, HTMLOutputElement);
+
+  class IgniterParagraphElement {
+  	constructor(inp) {
+  		let from = HTMLParagraphElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterParagraphElement.prototype, HTMLParagraphElement.prototype);
+  Object.setPrototypeOf(IgniterParagraphElement, HTMLParagraphElement);
+
+  class IgniterParamElement {
+  	constructor(inp) {
+  		let from = HTMLParamElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterParamElement.prototype, HTMLParamElement.prototype);
+  Object.setPrototypeOf(IgniterParamElement, HTMLParamElement);
+
+  class IgniterPictureElement {
+  	constructor(inp) {
+  		let from = HTMLPictureElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterPictureElement.prototype, HTMLPictureElement.prototype);
+  Object.setPrototypeOf(IgniterPictureElement, HTMLPictureElement);
+
+  class IgniterProgressElement {
+  	constructor(inp) {
+  		let from = HTMLProgressElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterProgressElement.prototype, HTMLProgressElement.prototype);
+  Object.setPrototypeOf(IgniterProgressElement, HTMLProgressElement);
+
+  class IgniterScriptElement {
+  	constructor(inp) {
+  		let from = HTMLScriptElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterScriptElement.prototype, HTMLScriptElement.prototype);
+  Object.setPrototypeOf(IgniterScriptElement, HTMLScriptElement);
+
+  class IgniterSelectElement {
+  	constructor(inp) {
+  		let from = HTMLSelectElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterSelectElement.prototype, HTMLSelectElement.prototype);
+  Object.setPrototypeOf(IgniterSelectElement, HTMLSelectElement);
+
+  class IgniterSlotElement {
+  	constructor(inp) {
+  		let from = HTMLSlotElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterSlotElement.prototype, HTMLSlotElement.prototype);
+  Object.setPrototypeOf(IgniterSlotElement, HTMLSlotElement);
+
+  class IgniterSourceElement {
+  	constructor(inp) {
+  		let from = HTMLSourceElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterSourceElement.prototype, HTMLSourceElement.prototype);
+  Object.setPrototypeOf(IgniterSourceElement, HTMLSourceElement);
+
+  class IgniterSpanElement {
+  	constructor(inp) {
+  		let from = HTMLSpanElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterSpanElement.prototype, HTMLSpanElement.prototype);
+  Object.setPrototypeOf(IgniterSpanElement, HTMLSpanElement);
+
+  class IgniterStyleElement {
+  	constructor(inp) {
+  		let from = HTMLStyleElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterStyleElement.prototype, HTMLStyleElement.prototype);
+  Object.setPrototypeOf(IgniterStyleElement, HTMLStyleElement);
+
+  class IgniterTableElement {
+  	constructor(inp) {
+  		let from = HTMLTableElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterTableElement.prototype, HTMLTableElement.prototype);
+  Object.setPrototypeOf(IgniterTableElement, HTMLTableElement);
+
+  class IgniterTableSectionElement {
+  	constructor(inp) {
+  		let from = HTMLTableSectionElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterTableSectionElement.prototype, HTMLTableSectionElement.prototype);
+  Object.setPrototypeOf(IgniterTableSectionElement, HTMLTableSectionElement);
+
+  class IgniterTableCellElement {
+  	constructor(inp) {
+  		let from = HTMLTableCellElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterTableCellElement.prototype, HTMLTableCellElement.prototype);
+  Object.setPrototypeOf(IgniterTableCellElement, HTMLTableCellElement);
+
+  class IgniterTemplateElement {
+  	constructor(inp) {
+  		let from = HTMLTemplateElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterTemplateElement.prototype, HTMLTemplateElement.prototype);
+  Object.setPrototypeOf(IgniterTemplateElement, HTMLTemplateElement);
+
+  class IgniterTextAreaElement {
+  	constructor(inp) {
+  		let from = HTMLTextAreaElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterTextAreaElement.prototype, HTMLTextAreaElement.prototype);
+  Object.setPrototypeOf(IgniterTextAreaElement, HTMLTextAreaElement);
+
+  class IgniterTimeElement {
+  	constructor(inp) {
+  		let from = HTMLTimeElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterTimeElement.prototype, HTMLTimeElement.prototype);
+  Object.setPrototypeOf(IgniterTimeElement, HTMLTimeElement);
+
+  class IgniterTitleElement {
+  	constructor(inp) {
+  		let from = HTMLTitleElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterTitleElement.prototype, HTMLTitleElement.prototype);
+  Object.setPrototypeOf(IgniterTitleElement, HTMLTitleElement);
+
+  class IgniterTableRowElement {
+  	constructor(inp) {
+  		let from = HTMLTableRowElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterTableRowElement.prototype, HTMLTableRowElement.prototype);
+  Object.setPrototypeOf(IgniterTableRowElement, HTMLTableRowElement);
+
+  class IgniterTrackElement {
+  	constructor(inp) {
+  		let from = HTMLTrackElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterTrackElement.prototype, HTMLTrackElement.prototype);
+  Object.setPrototypeOf(IgniterTrackElement, HTMLTrackElement);
+
+  class IgniterUListElement {
+  	constructor(inp) {
+  		let from = HTMLUListElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterUListElement.prototype, HTMLUListElement.prototype);
+  Object.setPrototypeOf(IgniterUListElement, HTMLUListElement);
+
+  class IgniterVideoElement {
+  	constructor(inp) {
+  		let from = HTMLVideoElement;
+  		let opt = (inp) ? {native:false,from:from,c:this.constructor,...inp} : {native: true,from: from,c:this.constructor};
+  		let ray = new Ray(opt);
+  		return new NodeConstructor(ray);
+  	}
+  }Object.setPrototypeOf(IgniterVideoElement.prototype, HTMLVideoElement.prototype);
+  Object.setPrototypeOf(IgniterVideoElement, HTMLVideoElement);
+
+  class A extends IgniterAnchorElement {
   	constructor(o) {
   		if(o) o.tag = "a";
   		super(o);
   	}
   }
-  class Abbr extends SuperElement {
+  class Abbr extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "abbr";
   		super(o);
   	}
   }
-  class Acronym extends SuperElement {
+  class Acronym extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "acronym";
   		super(o);
   	}
   }
-  class Address extends SuperElement {
+  class Address extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "address";
   		super(o);
   	}
   }
-  class Applet extends SuperUnknownElement {
+  class Applet extends IgniterUnknownElement {
   	constructor(o) {
   		if(o) o.tag = "applet";
   		super(o);
   	}
   }
-  class Area extends SuperAreaElement {
+  class Area extends IgniterAreaElement {
   	constructor(o) {
   		if(o) o.tag = "area";
   		super(o);
   	}
   }
-  class Article extends SuperElement {
+  class Article extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "article";
   		super(o);
   	}
   }
-  class Aside extends SuperElement {
+  class Aside extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "aside";
   		super(o);
   	}
   }
-  class Audio extends SuperAudioElement {
+  class Audio extends IgniterAudioElement {
   	constructor(o) {
   		if(o) o.tag = "audio";
   		super(o);
   	}
   }
-  class B extends SuperElement {
+  class B extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "b";
   		super(o);
   	}
   }
-  class Base extends SuperBaseElement {
+  class Base extends IgniterBaseElement {
   	constructor(o) {
   		if(o) o.tag = "base";
   		super(o);
   	}
   }
-  class Basefont extends SuperElement {
+  class Basefont extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "basefont";
   		super(o);
   	}
   }
-  class Bdi extends SuperElement {
+  class Bdi extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "bdi";
   		super(o);
   	}
   }
-  class Bdo extends SuperElement {
+  class Bdo extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "bdo";
   		super(o);
   	}
   }
-  class Bgsound extends SuperUnknownElement {
+  class Bgsound extends IgniterUnknownElement {
   	constructor(o) {
   		if(o) o.tag = "bgsound";
   		super(o);
   	}
   }
-  class Big extends SuperElement {
+  class Big extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "big";
   		super(o);
   	}
   }
-  class Blink extends SuperUnknownElement {
+  class Blink extends IgniterUnknownElement {
   	constructor(o) {
   		if(o) o.tag = "blink";
   		super(o);
   	}
   }
-  class Blockquote extends SuperQuoteElement {
+  class Blockquote extends IgniterQuoteElement {
   	constructor(o) {
   		if(o) o.tag = "blockquote";
   		super(o);
   	}
   }
-  class Body extends SuperBodyElement {
+  class Body extends IgniterBodyElement {
   	constructor(o) {
   		if(o) o.tag = "body";
   		super(o);
   	}
   }
-  class Br extends SuperBRElement {
+  class Br extends IgniterBRElement {
   	constructor(o) {
   		if(o) o.tag = "br";
   		super(o);
   	}
   }
-  class Button extends SuperButtonElement {
+  class Button extends IgniterButtonElement {
   	constructor(o) {
   		if(o) o.tag = "button";
   		super(o);
   	}
   }
-  class Canvas extends SuperCanvasElement {
+  class Canvas extends IgniterCanvasElement {
   	constructor(o) {
   		if(o) o.tag = "canvas";
   		super(o);
   	}
   }
-  class Caption extends SuperTableCaptionElement {
+  class Caption extends IgniterTableCaptionElement {
   	constructor(o) {
   		if(o) o.tag = "caption";
   		super(o);
   	}
   }
-  class Center extends SuperElement {
+  class Center extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "center";
   		super(o);
   	}
   }
-  class Cite extends SuperElement {
+  class Cite extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "cite";
   		super(o);
   	}
   }
-  class Code extends SuperElement {
+  class Code extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "code";
   		super(o);
   	}
   }
-  class Col extends SuperTableColElement {
+  class Col extends IgniterTableColElement {
   	constructor(o) {
   		if(o) o.tag = "col";
   		super(o);
   	}
   }
-  class Colgroup extends SuperTableColElement {
+  class Colgroup extends IgniterTableColElement {
   	constructor(o) {
   		if(o) o.tag = "colgroup";
   		super(o);
   	}
   }
-  class Command extends SuperUnknownElement {
+  class Command extends IgniterUnknownElement {
   	constructor(o) {
   		if(o) o.tag = "command";
   		super(o);
   	}
   }
-  class Content extends SuperUnknownElement {
+  class Content extends IgniterUnknownElement {
   	constructor(o) {
   		if(o) o.tag = "content";
   		super(o);
   	}
   }
-  class Data extends SuperDataElement {
+  class Data extends IgniterDataElement {
   	constructor(o) {
   		if(o) o.tag = "data";
   		super(o);
   	}
   }
-  class Datalist extends SuperDataListElement {
+  class Datalist extends IgniterDataListElement {
   	constructor(o) {
   		if(o) o.tag = "datalist";
   		super(o);
   	}
   }
-  class Dd extends SuperElement {
+  class Dd extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "dd";
   		super(o);
   	}
   }
-  class Del extends SuperModElement {
+  class Del extends IgniterModElement {
   	constructor(o) {
   		if(o) o.tag = "del";
   		super(o);
   	}
   }
-  class Details extends SuperDetailsElement {
+  class Details extends IgniterDetailsElement {
   	constructor(o) {
   		if(o) o.tag = "details";
   		super(o);
   	}
   }
-  class Dfn extends SuperElement {
+  class Dfn extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "dfn";
   		super(o);
   	}
   }
-  class Dialog extends SuperUnknownElement {
+  class Dialog extends IgniterUnknownElement {
   	constructor(o) {
   		if(o) o.tag = "dialog";
   		super(o);
   	}
   }
-  class Dir extends SuperDirectoryElement {
+  class Dir extends IgniterDirectoryElement {
   	constructor(o) {
   		if(o) o.tag = "dir";
   		super(o);
   	}
   }
-  class Div extends SuperDivElement {
+  class Div extends IgniterDivElement {
   	constructor(o) {
   		if(o) o.tag = "div";
   		super(o);
   	}
   }
-  class Dl extends SuperDListElement {
+  class Dl extends IgniterDListElement {
   	constructor(o) {
   		if(o) o.tag = "dl";
   		super(o);
   	}
   }
-  class Dt extends SuperElement {
+  class Dt extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "dt";
   		super(o);
   	}
   }
-  class Em extends SuperElement {
+  class Em extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "em";
   		super(o);
   	}
   }
-  class Embed extends SuperEmbedElement {
+  class Embed extends IgniterEmbedElement {
   	constructor(o) {
   		if(o) o.tag = "embed";
   		super(o);
   	}
   }
-  class Fieldset extends SuperFieldSetElement {
+  class Fieldset extends IgniterFieldSetElement {
   	constructor(o) {
   		if(o) o.tag = "fieldset";
   		super(o);
   	}
   }
-  class Figcaption extends SuperElement {
+  class Figcaption extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "figcaption";
   		super(o);
   	}
   }
-  class Figure extends SuperElement {
+  class Figure extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "figure";
   		super(o);
   	}
   }
-  class Font extends SuperFontElement {
+  class Font extends IgniterFontElement {
   	constructor(o) {
   		if(o) o.tag = "font";
   		super(o);
   	}
   }
-  class Footer extends SuperElement {
+  class Footer extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "footer";
   		super(o);
   	}
   }
-  class Form extends SuperFormElement {
+  class Form extends IgniterFormElement {
   	constructor(o) {
   		if(o) o.tag = "form";
   		super(o);
   	}
   }
-  class Frame extends SuperFrameElement {
+  class Frame extends IgniterFrameElement {
   	constructor(o) {
   		if(o) o.tag = "frame";
   		super(o);
   	}
   }
-  class Frameset extends SuperFrameSetElement {
+  class Frameset extends IgniterFrameSetElement {
   	constructor(o) {
   		if(o) o.tag = "frameset";
   		super(o);
   	}
   }
-  class H1 extends SuperHeadingElement {
+  class H1 extends IgniterHeadingElement {
   	constructor(o) {
   		if(o) o.tag = "h1";
   		super(o);
   	}
   }
-  class H2 extends SuperHeadingElement {
+  class H2 extends IgniterHeadingElement {
   	constructor(o) {
   		if(o) o.tag = "h2";
   		super(o);
   	}
   }
-  class H3 extends SuperHeadingElement {
+  class H3 extends IgniterHeadingElement {
   	constructor(o) {
   		if(o) o.tag = "h3";
   		super(o);
   	}
   }
-  class H4 extends SuperHeadingElement {
+  class H4 extends IgniterHeadingElement {
   	constructor(o) {
   		if(o) o.tag = "h4";
   		super(o);
   	}
   }
-  class H5 extends SuperHeadingElement {
+  class H5 extends IgniterHeadingElement {
   	constructor(o) {
   		if(o) o.tag = "h5";
   		super(o);
   	}
   }
-  class H6 extends SuperHeadingElement {
+  class H6 extends IgniterHeadingElement {
   	constructor(o) {
   		if(o) o.tag = "h6";
   		super(o);
   	}
   }
-  class Head extends SuperHeadElement {
+  class Head extends IgniterHeadElement {
   	constructor(o) {
   		if(o) o.tag = "head";
   		super(o);
   	}
   }
-  class Header extends SuperElement {
+  class Header extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "header";
   		super(o);
   	}
   }
-  class Hgroup extends SuperElement {
+  class Hgroup extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "hgroup";
   		super(o);
   	}
   }
-  class Hr extends SuperHRElement {
+  class Hr extends IgniterHRElement {
   	constructor(o) {
   		if(o) o.tag = "hr";
   		super(o);
   	}
   }
-  class Html extends SuperHtmlElement {
+  class Html extends IgniterHtmlElement {
   	constructor(o) {
   		if(o) o.tag = "html";
   		super(o);
   	}
   }
-  class I extends SuperElement {
+  class I extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "i";
   		super(o);
   	}
   }
-  class Iframe extends SuperIFrameElement {
+  class Iframe extends IgniterIFrameElement {
   	constructor(o) {
   		if(o) o.tag = "iframe";
   		super(o);
   	}
   }
-  class Image extends SuperElement {
+  class Image extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "image";
   		super(o);
   	}
   }
-  class Img extends SuperImageElement {
+  class Img extends IgniterImageElement {
   	constructor(o) {
   		if(o) o.tag = "img";
   		super(o);
   	}
   }
-  class Input extends SuperInputElement {
+  class Input extends IgniterInputElement {
   	constructor(o) {
   		if(o) o.tag = "input";
   		super(o);
   	}
   }
-  class Ins extends SuperModElement {
+  class Ins extends IgniterModElement {
   	constructor(o) {
   		if(o) o.tag = "ins";
   		super(o);
   	}
   }
-  class Isindex extends SuperUnknownElement {
+  class Isindex extends IgniterUnknownElement {
   	constructor(o) {
   		if(o) o.tag = "isindex";
   		super(o);
   	}
   }
-  class Kbd extends SuperElement {
+  class Kbd extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "kbd";
   		super(o);
   	}
   }
-  class Keygen extends SuperUnknownElement {
+  class Keygen extends IgniterUnknownElement {
   	constructor(o) {
   		if(o) o.tag = "keygen";
   		super(o);
   	}
   }
-  class Label extends SuperLabelElement {
+  class Label extends IgniterLabelElement {
   	constructor(o) {
   		if(o) o.tag = "label";
   		super(o);
   	}
   }
-  class Legend extends SuperLegendElement {
+  class Legend extends IgniterLegendElement {
   	constructor(o) {
   		if(o) o.tag = "legend";
   		super(o);
   	}
   }
-  class Li extends SuperLIElement {
+  class Li extends IgniterLIElement {
   	constructor(o) {
   		if(o) o.tag = "li";
   		super(o);
   	}
   }
-  class Link extends SuperLinkElement {
+  class Link extends IgniterLinkElement {
   	constructor(o) {
   		if(o) o.tag = "link";
   		super(o);
   	}
   }
-  class Listing extends SuperPreElement {
+  class Listing extends IgniterPreElement {
   	constructor(o) {
   		if(o) o.tag = "listing";
   		super(o);
   	}
   }
-  class Main extends SuperElement {
+  class Main extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "main";
   		super(o);
   	}
   }
-  class Map extends SuperMapElement {
+  class Map extends IgniterMapElement {
   	constructor(o) {
   		if(o) o.tag = "map";
   		super(o);
   	}
   }
-  class Mark extends SuperElement {
+  class Mark extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "mark";
   		super(o);
   	}
   }
-  class Marquee extends SuperMarqueeElement {
+  class Marquee extends IgniterMarqueeElement {
   	constructor(o) {
   		if(o) o.tag = "marquee";
   		super(o);
   	}
   }
-  class Menu extends SuperMenuElement {
+  class Menu extends IgniterMenuElement {
   	constructor(o) {
   		if(o) o.tag = "menu";
   		super(o);
   	}
   }
-  class Menuitem extends SuperMenuItemElement {
+  class Menuitem extends IgniterMenuItemElement {
   	constructor(o) {
   		if(o) o.tag = "menuitem";
   		super(o);
   	}
   }
-  class Meta extends SuperMetaElement {
+  class Meta extends IgniterMetaElement {
   	constructor(o) {
   		if(o) o.tag = "meta";
   		super(o);
   	}
   }
-  class Meter extends SuperMeterElement {
+  class Meter extends IgniterMeterElement {
   	constructor(o) {
   		if(o) o.tag = "meter";
   		super(o);
   	}
   }
-  class Multicol extends SuperUnknownElement {
+  class Multicol extends IgniterUnknownElement {
   	constructor(o) {
   		if(o) o.tag = "multicol";
   		super(o);
   	}
   }
-  class Nav extends SuperElement {
+  class Nav extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "nav";
   		super(o);
   	}
   }
-  class Nextid extends SuperUnknownElement {
+  class Nextid extends IgniterUnknownElement {
   	constructor(o) {
   		if(o) o.tag = "nextid";
   		super(o);
   	}
   }
-  class Nobr extends SuperElement {
+  class Nobr extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "nobr";
   		super(o);
   	}
   }
-  class Noembed extends SuperElement {
+  class Noembed extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "noembed";
   		super(o);
   	}
   }
-  class Noframes extends SuperElement {
+  class Noframes extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "noframes";
   		super(o);
   	}
   }
-  class Noscript extends SuperElement {
+  class Noscript extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "noscript";
   		super(o);
   	}
   }
-  class Ol extends SuperOListElement {
+  class ObjectEl extends IgniterObjectElement {
+  	constructor(o) {
+  		if(o) o.tag = "object";
+  		super(o);
+  	}
+  }
+  class Ol extends IgniterOListElement {
   	constructor(o) {
   		if(o) o.tag = "ol";
   		super(o);
   	}
   }
-  class Optgroup extends SuperOptGroupElement {
+  class Optgroup extends IgniterOptGroupElement {
   	constructor(o) {
   		if(o) o.tag = "optgroup";
   		super(o);
   	}
   }
-  class Option extends SuperOptionElement {
+  class Option extends IgniterOptionElement {
   	constructor(o) {
   		if(o) o.tag = "option";
   		super(o);
   	}
   }
-  class Output extends SuperOutputElement {
+  class Output extends IgniterOutputElement {
   	constructor(o) {
   		if(o) o.tag = "output";
   		super(o);
   	}
   }
-  class P extends SuperParagraphElement {
+  class P extends IgniterParagraphElement {
   	constructor(o) {
   		if(o) o.tag = "p";
   		super(o);
   	}
   }
-  class Param extends SuperParamElement {
+  class Param extends IgniterParamElement {
   	constructor(o) {
   		if(o) o.tag = "param";
   		super(o);
   	}
   }
-  class Picture extends SuperPictureElement {
+  class Picture extends IgniterPictureElement {
   	constructor(o) {
   		if(o) o.tag = "picture";
   		super(o);
   	}
   }
-  class Plaintext extends SuperElement {
+  class Plaintext extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "plaintext";
   		super(o);
   	}
   }
-  class Pre extends SuperPreElement {
+  class Pre extends IgniterPreElement {
   	constructor(o) {
   		if(o) o.tag = "pre";
   		super(o);
   	}
   }
-  class Progress extends SuperProgressElement {
+  class Progress extends IgniterProgressElement {
   	constructor(o) {
   		if(o) o.tag = "progress";
   		super(o);
   	}
   }
-  class Q extends SuperQuoteElement {
+  class Q extends IgniterQuoteElement {
   	constructor(o) {
   		if(o) o.tag = "q";
   		super(o);
   	}
   }
-  class Rb extends SuperElement {
+  class Rb extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "rb";
   		super(o);
   	}
   }
-  class Rp extends SuperElement {
+  class Rp extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "rp";
   		super(o);
   	}
   }
-  class Rt extends SuperElement {
+  class Rt extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "rt";
   		super(o);
   	}
   }
-  class Rtc extends SuperElement {
+  class Rtc extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "rtc";
   		super(o);
   	}
   }
-  class Ruby extends SuperElement {
+  class Ruby extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "ruby";
   		super(o);
   	}
   }
-  class S extends SuperElement {
+  class S extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "s";
   		super(o);
   	}
   }
-  class Samp extends SuperElement {
+  class Samp extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "samp";
   		super(o);
   	}
   }
-  class Script extends SuperScriptElement {
+  class Script extends IgniterScriptElement {
   	constructor(o) {
   		if(o) o.tag = "script";
   		super(o);
   	}
   }
-  class Section extends SuperElement {
+  class Section extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "section";
   		super(o);
   	}
   }
-  class Select extends SuperSelectElement {
+  class Select extends IgniterSelectElement {
   	constructor(o) {
   		if(o) o.tag = "select";
   		super(o);
   	}
   }
-  class Shadow extends SuperUnknownElement {
+  class Shadow extends IgniterUnknownElement {
   	constructor(o) {
   		if(o) o.tag = "shadow";
   		super(o);
   	}
   }
-  class Slot extends SuperSlotElement {
+  class Slot extends IgniterSlotElement {
   	constructor(o) {
   		if(o) o.tag = "slot";
   		super(o);
   	}
   }
-  class Small extends SuperElement {
+  class Small extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "small";
   		super(o);
   	}
   }
-  class Source extends SuperSourceElement {
+  class Source extends IgniterSourceElement {
   	constructor(o) {
   		if(o) o.tag = "source";
   		super(o);
   	}
   }
-  class Spacer extends SuperUnknownElement {
+  class Spacer extends IgniterUnknownElement {
   	constructor(o) {
   		if(o) o.tag = "spacer";
   		super(o);
   	}
   }
-  class Span extends SuperSpanElement {
+  class Span extends IgniterSpanElement {
   	constructor(o) {
   		if(o) o.tag = "span";
   		super(o);
   	}
   }
-  class Strike extends SuperElement {
+  class Strike extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "strike";
   		super(o);
   	}
   }
-  class Strong extends SuperElement {
+  class Strong extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "strong";
   		super(o);
   	}
   }
-  class Style extends SuperStyleElement {
+  class Style extends IgniterStyleElement {
   	constructor(o) {
   		if(o) o.tag = "style";
   		super(o);
   	}
   }
-  class Sub extends SuperElement {
+  class Sub extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "sub";
   		super(o);
   	}
   }
-  class Summary extends SuperElement {
+  class Summary extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "summary";
   		super(o);
   	}
   }
-  class Sup extends SuperElement {
+  class Sup extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "sup";
   		super(o);
   	}
   }
-  class Table extends SuperTableElement {
+  class Table extends IgniterTableElement {
   	constructor(o) {
   		if(o) o.tag = "table";
   		super(o);
   	}
   }
-  class Tbody extends SuperTableSectionElement {
+  class Tbody extends IgniterTableSectionElement {
   	constructor(o) {
   		if(o) o.tag = "tbody";
   		super(o);
   	}
   }
-  class Td extends SuperTableCellElement {
+  class Td extends IgniterTableCellElement {
   	constructor(o) {
   		if(o) o.tag = "td";
   		super(o);
   	}
   }
-  class Template extends SuperTemplateElement {
+  class Template extends IgniterTemplateElement {
   	constructor(o) {
   		if(o) o.tag = "template";
   		super(o);
   	}
   }
-  class Textarea extends SuperTextAreaElement {
+  class Textarea extends IgniterTextAreaElement {
   	constructor(o) {
   		if(o) o.tag = "textarea";
   		super(o);
   	}
   }
-  class Tfoot extends SuperTableSectionElement {
+  class Tfoot extends IgniterTableSectionElement {
   	constructor(o) {
   		if(o) o.tag = "tfoot";
   		super(o);
   	}
   }
-  class Th extends SuperTableCellElement {
+  class Th extends IgniterTableCellElement {
   	constructor(o) {
   		if(o) o.tag = "th";
   		super(o);
   	}
   }
-  class Thead extends SuperTableSectionElement {
+  class Thead extends IgniterTableSectionElement {
   	constructor(o) {
   		if(o) o.tag = "thead";
   		super(o);
   	}
   }
-  class Time extends SuperTimeElement {
+  class Time extends IgniterTimeElement {
   	constructor(o) {
   		if(o) o.tag = "time";
   		super(o);
   	}
   }
-  class Title extends SuperTitleElement {
+  class Title extends IgniterTitleElement {
   	constructor(o) {
   		if(o) o.tag = "title";
   		super(o);
   	}
   }
-  class Tr extends SuperTableRowElement {
+  class Tr extends IgniterTableRowElement {
   	constructor(o) {
   		if(o) o.tag = "tr";
   		super(o);
   	}
   }
-  class Track extends SuperTrackElement {
+  class Track extends IgniterTrackElement {
   	constructor(o) {
   		if(o) o.tag = "track";
   		super(o);
   	}
   }
-  class Tt extends SuperElement {
+  class Tt extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "tt";
   		super(o);
   	}
   }
-  class U extends SuperElement {
+  class U extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "u";
   		super(o);
   	}
   }
-  class Ul extends SuperUListElement {
+  class Ul extends IgniterUListElement {
   	constructor(o) {
   		if(o) o.tag = "ul";
   		super(o);
   	}
   }
-  class Var extends SuperElement {
+  class Var extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "var";
   		super(o);
   	}
   }
-  class Video extends SuperVideoElement {
+  class Video extends IgniterVideoElement {
   	constructor(o) {
   		if(o) o.tag = "video";
   		super(o);
   	}
   }
-  class Wbr extends SuperElement {
+  class Wbr extends IgniterElement {
   	constructor(o) {
   		if(o) o.tag = "wbr";
   		super(o);
   	}
   }
-  class Xmp extends SuperPreElement {
+  class Xmp extends IgniterPreElement {
   	constructor(o) {
   		if(o) o.tag = "xmp";
   		super(o);
@@ -2127,6 +1785,7 @@ var Igniter = (function (exports) {
   exports.Noembed = Noembed;
   exports.Noframes = Noframes;
   exports.Noscript = Noscript;
+  exports.ObjectEl = ObjectEl;
   exports.Ol = Ol;
   exports.Optgroup = Optgroup;
   exports.Option = Option;

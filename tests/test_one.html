@@ -3,20 +3,29 @@
     <script src="../dist/igniter.dist.js"></script>
   </head>
   <body>
-    <p is="my-p"><b>Prev </b></p>
+    <button is="my-button" cl="Clicked!"></button>
+    <my-button foo="bar" cl="Clicked!"></my-button>
     <script>
 
-      const { P } = Igniter;
+      const { Button, Div } = Igniter;
 
-      class MyP extends P {
+      class MyButton extends Button {
+        onclick() {
+          this.appendChild(document.createTextNode(this.sharedStorage.get("name")));
+        }
         constructor(o) {
-          super(o);
-          this.appendChild(document.createTextNode("my text here"));
+          super({custom: "my-button", attr: { "foo": "bar" }});
+          this.appendChild(document.createTextNode(this.getAttribute("foo")));
+          this.onclick = this.onclick.bind(this);
+          this.addEventListener("click", this.onclick);
         }
       }
-
-      new MyP({custom: "my-p"});
+      let d = new Div({attr: {id: "app"}});
+      d.sharedStorage.set("name", "my-app");
+      document.body.appendChild(d);
+      d.appendChild(new MyButton());
 
     </script>
+
   </body>
 </html>

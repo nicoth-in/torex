@@ -1,65 +1,45 @@
 import SharedStorage from './storage';
 import Randomize from './random';
 
-class NodeConstructor {
-	constructor(c, t) {
-  	var answer;
-		this.c = c;
-		// If this is a script call
-  	if(!t.is_native) {
-    	if(t.custom) {
-				// If we want a custom el
-				if(this.checkSelfConstruction(t.tag)) {
-					console.error("You can't customize default elements. Create a new class and extend this element.");
-				} else if(!customElements.get(t.custom)) {
-					// If it not exists try to create
+export class NodeConstructor {
+	constructor(ray) {
+		this.c = ray.c;
+		switch (ray.type) {
+			case "native":
+				break;
+			case "tag":
+				if(!customElements.get(ray.custom)) {
+					this.customize(ray.custom, ray.tag);
+				}
+				break;
+			case "custom":
+				if(!customElements.get(ray.custom)) {
 					try {
-						this.customize(t.custom, t.tag);
-						answer = document.createElement(t.custom);
+						this.customize(ray.custom, ray.tag);
 					}
 					catch(e) {
 						console.error(e);
 					}
 				} else {
-					// If it exists just create
-					console.error("Custom element", t.custom, "already exists. Created with prev constructor.");
-					answer = document.createElement(t.custom);
+					//console.error("Custom element", ray.custom, "already exists. Created with prev constructor.");
 				}
-      } else {
-				// If this is not a custom element
-      	t.custom = Randomize();
-      	while(customElements.get(t.custom)) {
-        	t.custom = Randomize();
-        }
-        t.custom = "igniter-"+t.custom;
-				// If it is not a default one
-				if(!this.checkSelfConstruction(t.tag)) {
-					try {
-						this.customize(t.custom, t.tag);
-						answer = document.createElement(t.tag, { extends: t.custom });
-					}
-					catch(e) {
-						console.error(e);
-					}
+				break;
+			case "default":
+				try {
+					this.customize("igniter-"+ray.custom, ray.tag);
 				}
-      }
-			if(!answer) {
-				t.custom = "igniter-"+t.tag;
-				// If it is a default constructor
-				if(this.checkSelfConstruction(t.tag)) {
-					if(!customElements.get(t.custom)) this.customize(t.custom, t.tag);
-					answer = document.createElement(t.tag, { extends: t.custom });
-				} else {
-					console.error("Can't create an element.")
+				catch(e) {
+					console.error(e);
 				}
-			}
-    } else {
-			// If this is a DOM call
-			answer = Reflect.construct(t.from, [], this.c);
+				break;
 		}
-		// Set shared storage
+		let answer = Reflect.construct(ray.from, [], ray.c);
+		if(ray.attr) {
+			for(let v in ray.attr) {
+				answer.setAttribute(v, ray.attr[v]);
+			}
+		}
 		if(answer) this.storageSet(answer);
-
     return answer;
   }
   customize(name, from) {
@@ -68,10 +48,32 @@ class NodeConstructor {
   storageSet(node) {
   	node.sharedStorage = new SharedStorage(node);
   }
-	/* Checks if it was a default node constructor by cheking prototype level */
-	checkSelfConstruction(tag) {
-		return (this.c.name.toLowerCase() == tag.toLowerCase());
-	}
 }
 
-export default NodeConstructor
+export class Ray {
+	constructor(options) {
+		this.tag = options.tag;
+		this.c = options.c;
+		this.from = options.from;
+		if(options.native) {
+			this.type = "native";
+		} else if(this.c.name.toLowerCase() == this.tag.toLowerCase()) {
+			if(this.custom) console.error("You can't customize default elements. Create a new class and extend this element.");
+			this.type = "tag";
+			this.custom = "igniter-"+this.tag;
+		} else if(options.custom) {
+			this.type = "custom";
+			this.custom = options.custom;
+		} else {
+			this.type = "default";
+			this.custom = false;
+			this.genCustom();
+		}
+		if(options.attr) this.attr = options.attr;
+	}
+	genCustom() {
+		while(customElements.get(this.custom)||(!this.custom)) {
+			this.custom = Randomize();
+		}
+	}
+}

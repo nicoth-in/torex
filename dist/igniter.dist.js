@@ -71,7 +71,7 @@ var Igniter = (function (exports) {
   						this.customize(ray.custom, ray.tag);
   					}
   					catch(e) {
-  						console.error(e);
+  						//console.error(e);
   					}
   				}
   				break;
@@ -80,16 +80,20 @@ var Igniter = (function (exports) {
   					this.customize("igniter-"+ray.custom, ray.tag);
   				}
   				catch(e) {
-  					console.error(e);
+  					//console.error(e);
   				}
   				break;
   		}
   		let answer = Reflect.construct(ray.from, [], ray.c);
-  		if(ray.attr) {
-  			for(let v in ray.attr) {
-  				answer.setAttribute(v, ray.attr[v]);
-  			}
+
+  		for(let v in ray.attr) {
+  			answer.setAttribute(v, ray.attr[v]);
   		}
+
+  		for(let item of ray.items) {
+  			answer.appendChild(item);
+  		}
+
   		if(answer) this.storageSet(answer);
       return answer;
     }
@@ -120,7 +124,14 @@ var Igniter = (function (exports) {
   			this.custom = false;
   			this.genCustom();
   		}
-  		if(options.attr) this.attr = options.attr;
+
+  		this.attr = options.attr || {};
+  		this.items = options.items || [];
+
+  		if(!(this.items instanceof Array)) {
+  			this.items = [this.items];
+  		}
+
   	}
   	genCustom() {
   		while(customElements.get(this.custom)||(!this.custom)) {
@@ -546,8 +557,8 @@ var Igniter = (function (exports) {
   		let ray = new Ray(opt);
   		return new NodeConstructor(ray);
   	}
-  }Object.setPrototypeOf(IgniterMenuItemElement.prototype, HTMLMenuItemElement.prototype);
-  Object.setPrototypeOf(IgniterMenuItemElement, HTMLMenuItemElement);
+  }Object.setPrototypeOf(IgniterMenuItemElement.prototype, HTMLElement.prototype);
+  Object.setPrototypeOf(IgniterMenuItemElement, HTMLElement);
 
   class IgniterMetaElement {
   	constructor(inp) {

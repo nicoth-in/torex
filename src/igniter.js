@@ -460,8 +460,8 @@ class IgniterMenuItemElement {
 		return new NodeConstructor(ray);
 	}
 };
-Object.setPrototypeOf(IgniterMenuItemElement.prototype, HTMLMenuItemElement.prototype);
-Object.setPrototypeOf(IgniterMenuItemElement, HTMLMenuItemElement);
+Object.setPrototypeOf(IgniterMenuItemElement.prototype, HTMLElement.prototype);
+Object.setPrototypeOf(IgniterMenuItemElement, HTMLElement);
 
 class IgniterMetaElement {
 	constructor(inp) {

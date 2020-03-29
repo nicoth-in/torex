@@ -18,7 +18,7 @@ export class NodeConstructor {
 						this.customize(ray.custom, ray.tag);
 					}
 					catch(e) {
-						console.error(e);
+						//console.error(e);
 					}
 				} else {
 					//console.error("Custom element", ray.custom, "already exists. Created with prev constructor.");
@@ -29,16 +29,20 @@ export class NodeConstructor {
 					this.customize("igniter-"+ray.custom, ray.tag);
 				}
 				catch(e) {
-					console.error(e);
+					//console.error(e);
 				}
 				break;
 		}
 		let answer = Reflect.construct(ray.from, [], ray.c);
-		if(ray.attr) {
-			for(let v in ray.attr) {
-				answer.setAttribute(v, ray.attr[v]);
-			}
+
+		for(let v in ray.attr) {
+			answer.setAttribute(v, ray.attr[v]);
 		}
+
+		for(let item of ray.items) {
+			answer.appendChild(item);
+		}
+
 		if(answer) this.storageSet(answer);
     return answer;
   }
@@ -69,7 +73,14 @@ export class Ray {
 			this.custom = false;
 			this.genCustom();
 		}
-		if(options.attr) this.attr = options.attr;
+
+		this.attr = options.attr || {};
+		this.items = options.items || [];
+
+		if(!(this.items instanceof Array)) {
+			this.items = [this.items];
+		}
+
 	}
 	genCustom() {
 		while(customElements.get(this.custom)||(!this.custom)) {

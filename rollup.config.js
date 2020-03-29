@@ -1,12 +1,23 @@
 
+import { terser } from "rollup-plugin-terser";
+
 export default {
   input: 'src/igniter.js',
-  output: {
+  output: [
+  {
     file: 'dist/igniter.dist.js',
     format: 'iife',
     name: 'Igniter',
     globals: {}
   },
+  {
+    file: 'dist/igniter.dist.min.js',
+    format: 'iife',
+    name: 'Igniter',
+    plugins: [terser()],
+    globals: {}
+  }
+  ],
   external: [],
 }
 

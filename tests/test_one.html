@@ -3,8 +3,11 @@
     <script src="../dist/igniter.dist.js"></script>
   </head>
   <body>
-    <button is="my-button" cl="Clicked!"></button>
-    <my-button foo="bar" cl="Clicked!"></my-button>
+
+    <my-app>
+      <button is="my-button"></button>
+    </my-app>
+
     <script>
 
       const { Button, Div } = Igniter;
@@ -12,18 +15,26 @@
       class MyButton extends Button {
         onclick() {
           this.appendChild(document.createTextNode(this.sharedStorage.get("name")));
+          this.sharedStorage.set("name", "other-name");
         }
         constructor(o) {
-          super({custom: "my-button", attr: { "foo": "bar" }});
+          super({custom: "my-button", attr: { "foo": "bar", "data-name": "big-name" }});
           this.appendChild(document.createTextNode(this.getAttribute("foo")));
+
           this.onclick = this.onclick.bind(this);
           this.addEventListener("click", this.onclick);
         }
       }
-      let d = new Div({attr: {id: "app"}});
-      d.sharedStorage.set("name", "my-app");
-      document.body.appendChild(d);
-      d.appendChild(new MyButton());
+
+      class MyApp extends Div {
+        constructor(o) {
+          super({attr: {id: "app"}, custom: "my-app"});
+          this.sharedStorage.set("name", "my-app");
+          this.appendChild(new MyButton());
+        }
+      }
+
+      let d = new MyApp();
 
     </script>
 

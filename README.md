@@ -16,15 +16,51 @@ Igniter is rapid and powerful framework. Major features are:
 - No Virtual DOM by default, no abstractions.
 - You can use templates, mix generated HTML with JS without pain.
 
+## Installation
+
+Igniter is a frontend framework. You can use `./dist/igniter.dist.js` or minified `./dist/igniter.dist.min.js` files.
+
 ## Igniter in examples
 
 ### Construction
 
 The core feature is that **Igniter element == DOM element**.
 So, you can construct elements and attach them like any other element.
+
 ```
 let { Div } = Igniter;
 document.body.appendChild(new Div({}));
+```
+
+You can construct elements with some options.
+The first option is `attr`, it should contain Object with element attributes.
+For example:
+```
+let my_el = new Div({ attr: { "id": "my-super-app" } });
+```
+will be rendered as `<div id="my-super-app"></div>`
+### Extending Igniter elements
+
+Igniter elements can be wrapped in user's classes.
+
+```
+class MyDiv extends Igniter.Div {
+  constructor(args) {
+    super(args);
+  }
+}
+new MyDiv(/* Some options */);
+```
+
+or
+
+```
+class MyDiv extends Igniter.Div {
+  constructor() {
+    super({/* Constant options */});
+  }
+}
+new MyDiv();
 ```
 
 ### Shared storage

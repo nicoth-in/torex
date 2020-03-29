@@ -1,0 +1,25 @@
+{
+  "products": [
+    {
+      "name": "Cherry",
+      "description": "Red cherries",
+      "price": "2.99",
+      "color": "red",
+      "img": "img/cherry.jpg"
+    },
+    {
+      "name": "Lemon",
+      "description": "Yellow lemon",
+      "price": "8.59",
+      "color": "yellow",
+      "img": "img/lemon.jpg"
+    },
+    {
+      "name": "Kiwi",
+      "description": "Green kiwi",
+      "price": "2.00",
+      "color": "green",
+      "img": "img/kiwi.jpg"
+    }
+  ]
+}

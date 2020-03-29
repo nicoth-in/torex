@@ -10,12 +10,12 @@
 Torex is a frontend framework. You can use `./dist/torexr.dist.js` or minified `./dist/torex.dist.min.js` files.
 If you are using npm, run this command in terminal `npm i @torexjs/torex` or import torex in your package.json.
 
-# Building
+## Building
 
 You can build your own bundle from src using.
 First install package. Second run `npm run build`.
 
-# Running examples locally
+## Running examples locally
 
 Type `npm run host-examples` to start local server and host examples.
 

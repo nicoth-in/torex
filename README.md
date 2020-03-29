@@ -1,5 +1,5 @@
-<p align="center"> <img src="https://github.com/nicoth-in/torex/raw/master/content/Logo.png"></p>
-<h1 align="center">Torex 1.0</h1>
+<p align="center"> <img src="https://github.com/nicoth-in/torex/raw/master/content/Logo.png" height="80px"> </p>
+<h1 align="center">Torex 1.0 release</h1>
 <p align="center"><a href="https://github.com/nicoth-in/torex/blob/master/LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-blue.svg"></a></p>
 
 <p align="center">Torex is a rapid <i>frontend</i> JS framework without abstractions. It helps you to build and manage DOM in an object-oriented programming style.</p>
@@ -8,8 +8,20 @@
 ## Installation
 
 Torex is a frontend framework. You can use `./dist/torexr.dist.js` or minified `./dist/torex.dist.min.js` files.
+If you are using npm, run this command in terminal `npm i @torexjs/torex` or import torex in your package.json.
 
-## Torex in examples
+# Building
+
+You can build your own bundle from src using.
+First install package. Second run `npm run build`.
+
+# Running examples locally
+
+Type `npm run host-examples` to start local server and host examples.
+
+## Torex Documentation
+
+This section describes possible ways of using Torex.
 
 ### Construction
 
@@ -28,6 +40,11 @@ For example:
 let my_el = new Div({ attr: { "id": "my-super-app" } });
 ```
 will be rendered as `<div id="my-super-app"></div>`
+You can pass `items` containing Torex/DOM elements or Array of these elements.
+```
+let my_el = new Div({ items: new Span({ items: new Text("Text here.") }) });
+```
+
 ### Extending Torex elements
 
 Torex elements can be wrapped in user's classes.

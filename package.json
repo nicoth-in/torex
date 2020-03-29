@@ -1,5 +1,9 @@
 {
-  "name": "Torex",
+  "name": "@torexjs/torex",
+  "keywords": [
+    "torex",
+    "torexjs"
+  ],
   "description": "Torex is a rapid frontend JS framework without abstractions. It helps you to build and manage DOM in an object-oriented programming style.",
   "license": "MIT",
   "version": "1.0.0",

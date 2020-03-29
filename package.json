@@ -6,7 +6,7 @@
   ],
   "description": "Torex is a rapid frontend JS framework without abstractions. It helps you to build and manage DOM in an object-oriented programming style.",
   "license": "MIT",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "src/torex.js",
   "repository": {
     "type": "git",

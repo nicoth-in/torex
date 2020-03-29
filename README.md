@@ -7,7 +7,7 @@
 
 ## Installation
 
-Torex is a frontend framework. You can use `./dist/torexr.dist.js` or minified `./dist/torex.dist.min.js` files.
+Torex is a frontend framework. You can use `./dist/torex.dist.js` or minified `./dist/torex.dist.min.js` files.
 If you are using npm, run this command in terminal `npm i @torexjs/torex` or import torex in your package.json.
 
 ## Building

@@ -1,58 +1,60 @@
 
+/*
+  Plugin can minify es6
+ */
 import { terser } from "rollup-plugin-terser";
 
+/*
+  Plugin shows build progress
+ */
+import progress from 'rollup-plugin-progress';
+
+/*
+  Plugins to handle packages
+ */
+import resolve from 'rollup-plugin-node-resolve';
+import commonJS from 'rollup-plugin-commonjs';
+
+/*
+  Babel transforms es6 to es5
+ */
+import babel from 'rollup-plugin-babel';
+
+/*
+  Build configuration
+ */
 export default {
-  input: 'src/igniter.js',
+  input: 'src/torex.js',
   output: [
   {
-    file: 'dist/igniter.dist.js',
+    file: 'dist/torex.dist.js',
     format: 'iife',
-    name: 'Igniter',
+    name: 'Torex',
     globals: {}
   },
   {
-    file: 'dist/igniter.dist.min.js',
+    file: 'dist/torex.dist.min.js',
     format: 'iife',
-    name: 'Igniter',
-    plugins: [terser()],
+    name: 'Torex',
+    plugins: [
+      // Minify
+      terser(),
+    ],
     globals: {}
   }
   ],
+  plugins: [
+    // Handle packages
+    commonJS({
+      include: 'node_modules/**'
+    }),
+    resolve(),
+    // Show progress
+    progress(),
+    // Transform es6 to es5
+    babel({
+      exclude: 'node_modules/**',
+    })
+  ],
   external: [],
 }
-
-/*
-  ---------
-  Generator
-  ---------
- */
-
-// var v = {}; var t = "";
-// for(let ny of a) {
-// 	var z = document.createElement(ny).constructor.name;
-// 	var nodename = "Super"+z.substring(4, z.length);
-// 	v[nodename] = `
-// const ${nodename} = NodeConstructor;
-// Object.setPrototypeOf(${nodename}.prototype, ${z}.prototype);
-// Object.setPrototypeOf(${nodename}, ${z});
-// `;
-// 	t += `
-// export class ${(ny[0].toUpperCase() + ny.slice(1))} extends ${nodename} {
-// 		constructor(o) {
-// 			if(o) {
-// 				o.tag = "${ny}";
-// 				o.is_native = false;
-// 			} else {
-// 				o = {
-// 					is_native: true,
-// 					from: ${z},
-// 				};
-// 			}
-// 			super(o);
-// 		}
-// 	}`;
-// }
-// var s = "";
-// for(let ny in v) {s+=v[ny];}
-// console.log(s);
-// console.log(t);

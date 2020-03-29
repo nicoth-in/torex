@@ -1,11 +1,12 @@
 {
-  "name": "Igniter",
-  "description": "Ignite your pages! Igniter is a rapid frontend JS framework without abstractions. It helps you to build and manage DOM in an object-oriented programming style.",
+  "name": "Torex",
+  "description": "Torex is a rapid frontend JS framework without abstractions. It helps you to build and manage DOM in an object-oriented programming style.",
   "license": "MIT",
-  "version": "0.4.0",
+  "version": "1.0.0",
+  "main": "src/torex.js",
   "repository": {
     "type": "git",
-    "url": "git://github.com/nicoth-in/igniter.git"
+    "url": "git://github.com/nicoth-in/torex.git"
   },
   "scripts": {
     "test": "echo Tests are unprovided yet.",
@@ -13,8 +14,16 @@
     "host-examples": "node host-examples.js"
   },
   "devDependencies": {
+    "express": "^4.17.1",
     "rollup": "^2.2.0",
-    "rollup-plugin-terser": "^5.3.0",
-    "express": "^4.17.1"
+    "@babel/core": "^7.9.0",
+    "@babel/preset-env": "^7.9.0",
+    "rollup-plugin-babel": "^4.4.0",
+    "rollup-plugin-commonjs": "^10.1.0",
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "rollup-plugin-progress": "^1.1.1",
+    "rollup-plugin-terser": "^5.3.0"
+  },
+  "dependencies": {
   }
 }

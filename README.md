@@ -1,2 +1,0 @@
-# torex
-Frontend JS framework.

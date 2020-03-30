@@ -13,21 +13,24 @@
     "url": "git://github.com/nicoth-in/torex.git"
   },
   "scripts": {
-    "test": "echo Tests are unprovided yet.",
+    "test": "echo Tests can't be provided. Use build to validate code.",
     "build": "rollup -c",
     "host-examples": "node host-examples.js"
   },
+  "eslintConfig": {
+    "extends": "rollup"
+  },
   "devDependencies": {
-    "express": "^4.17.1",
-    "rollup": "^2.2.0",
     "@babel/core": "^7.9.0",
     "@babel/preset-env": "^7.9.0",
+    "eslint-config-rollup": "^0.1.0",
+    "express": "^4.17.1",
+    "rollup": "^2.2.0",
     "rollup-plugin-babel": "^4.4.0",
     "rollup-plugin-commonjs": "^10.1.0",
     "rollup-plugin-node-resolve": "^5.2.0",
     "rollup-plugin-progress": "^1.1.1",
     "rollup-plugin-terser": "^5.3.0"
   },
-  "dependencies": {
-  }
+  "dependencies": {}
 }

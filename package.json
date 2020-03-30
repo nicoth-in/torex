@@ -13,7 +13,7 @@
     "url": "git://github.com/nicoth-in/torex.git"
   },
   "scripts": {
-    "test": "echo Tests can't be provided. Use build to validate code.",
+    "test": "echo Tests can not be provided. Use build to validate code.",
     "build": "rollup -c",
     "host-examples": "node host-examples.js"
   },

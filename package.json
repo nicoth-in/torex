@@ -4,9 +4,22 @@
     "torex",
     "torexjs"
   ],
+  "files": [
+    "package.json",
+    "README.md",
+    "LICENSE.md",
+    "host-examples.js",
+    "rollup.config.js",
+    ".babelrc",
+    ".eslintrc",
+    "dist/",
+    "src/",
+    "examples/",
+    "docs/"
+  ],
   "description": "Torex is a rapid frontend JS framework without abstractions. It helps you to build and manage DOM in an object-oriented programming style.",
   "license": "MIT",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "src/torex.js",
   "repository": {
     "type": "git",

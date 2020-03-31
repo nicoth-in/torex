@@ -1,0 +1,6 @@
+[submodule "docs"]
+	path = docs
+	url = https://github.com/nicoth-in/torex-docs
+[submodule "examples"]
+	path = examples
+	url = https://github.com/nicoth-in/torex-examples

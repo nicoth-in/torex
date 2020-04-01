@@ -19,90 +19,20 @@ First install package. Second run `npm run build`.
 
 Type `npm run host-examples` to start local server and host examples.
 
-## Torex Documentation
+## [Torex Documentation](/docs/)
 
-This section describes possible ways of using Torex.
+## The why
 
-### Construction
+Torex was created to make web applications lighter but still functional. Most of the small apps doesn't need to use heavy frameworks with layers of abstractions, hooks, virtualization and stuff like that. We believe that modern browsers provide a big number of solutions which can help you to build web. Torex is an adaptor between a browser features and easy to use components.
 
-The core feature is that **Torex element == DOM element**.
-So, you can construct elements and attach them like any other element.
+## Features
 
-```
-let { Div } = Torex;
-document.body.appendChild(new Div({}));
-```
+First of all, Torex doesn't use Objects between your application and DOM. All elements you use are already DOM components. So, here we can say that Torex is Reactive framework. Changing attribute of a Torex element will affect HTML tree immediately, and this done without any observers or hooks.
 
-You can construct elements with some options.
-The first option is `attr`, it should contain Object with element attributes.
-For example:
-```
-let my_el = new Div({ attr: { "id": "my-super-app" } });
-```
-will be rendered as `<div id="my-super-app"></div>`
-You can pass `items` containing Torex/DOM elements or Array of these elements.
-```
-let my_el = new Div({ items: new Span({ items: new Text("Text here.") }) });
-```
+Secondly, Torex can be mixed with native HTML. You may create Torex element and attach it straight to your page with `appendChild` method. And this also can be done with Torex element inside it's constructor or outside. You can use shadow DOM, templates and all features of modern HTML.
 
-### Extending Torex elements
+At this point we should also talk about custom elements. Well, Torex is build using this elements. You should think about every element like it is a container with some data, children containers and methods. So, all Torex elements are custom.
 
-Torex elements can be wrapped in user's classes.
+## [License](/LICENSE.md)
 
-```
-class MyDiv extends Torex.Div {
-  constructor(args) {
-    super(args);
-  }
-}
-new MyDiv(/* Some options */);
-```
-
-or
-
-```
-class MyDiv extends Torex.Div {
-  constructor() {
-    super({/* Constant options */});
-  }
-}
-new MyDiv();
-```
-
-### Shared storage
-
-Shared storage is a build-in class attached to every Torex element.
-It is basically storage with `set()` and `get()` methods, but the data it stores is shared with children.
-So, if you set/get some data on children it will be actually set/get on the root parent.
-Shared storage can be accessed via `sharedStorage` field on Torex elements.
-
-## Reference
-
-Torex consists of build-in elements. They all can be created with some options.
-The main concept here, that the first construction is an **initializing process** too.
-So, the first construction **must** be done with options.
-```
-new Torex.Div(options)
-
-// The first call of any Torex element must be done with options(even if it is an empty object).
-// I recommend you always call elements with options.
-
-```
-Where `options` is an `Object` with fields:
-  - custom *[optional]* - name of the custom element.
-  It is helpful then you need to use classes on existing elements.
-  For example, if you have an element `<my-button></my-button>` or `<button is="my-button"></button>`
-  and JS:
-  ```
-  class MyButton extends Torex.Button {
-    constructor(args) {
-      super(args);
-      this.appendChild(new Text("text"));
-    }
-  }
-  new MyButton({ custom: "my-button" }) // We are not using this element, we just want to initialize it
-  ```
-  And after running that script your button will become `<button is="my-button">Text</button>`.
-
-  - attr *[optional]* - `Object` with attributes which will be attached in construction process.
-  `new Torex.Div({ attr: {id: "app"} })` will return `<div id="app"></div>`
+Licensed under MIT.

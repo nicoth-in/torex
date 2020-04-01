@@ -19,7 +19,7 @@ First install package. Second run `npm run build`.
 
 Type `npm run host-examples` to start local server and host examples.
 
-## [Torex Documentation](/docs/)
+## [Torex Documentation](https://github.com/nicoth-in/torex-docs)
 
 ## The why
 

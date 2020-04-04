@@ -2,7 +2,8 @@
   "name": "@torexjs/torex",
   "keywords": [
     "torex",
-    "torexjs"
+    "torexjs",
+    "front-end"
   ],
   "files": [
     "package.json",

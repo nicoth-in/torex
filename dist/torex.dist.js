@@ -23,55 +23,6 @@ var Torex = (function () {
     return Constructor;
   }
 
-  function _defineProperty(obj, key, value) {
-    if (key in obj) {
-      Object.defineProperty(obj, key, {
-        value: value,
-        enumerable: true,
-        configurable: true,
-        writable: true
-      });
-    } else {
-      obj[key] = value;
-    }
-
-    return obj;
-  }
-
-  function ownKeys(object, enumerableOnly) {
-    var keys = Object.keys(object);
-
-    if (Object.getOwnPropertySymbols) {
-      var symbols = Object.getOwnPropertySymbols(object);
-      if (enumerableOnly) symbols = symbols.filter(function (sym) {
-        return Object.getOwnPropertyDescriptor(object, sym).enumerable;
-      });
-      keys.push.apply(keys, symbols);
-    }
-
-    return keys;
-  }
-
-  function _objectSpread2(target) {
-    for (var i = 1; i < arguments.length; i++) {
-      var source = arguments[i] != null ? arguments[i] : {};
-
-      if (i % 2) {
-        ownKeys(Object(source), true).forEach(function (key) {
-          _defineProperty(target, key, source[key]);
-        });
-      } else if (Object.getOwnPropertyDescriptors) {
-        Object.defineProperties(target, Object.getOwnPropertyDescriptors(source));
-      } else {
-        ownKeys(Object(source)).forEach(function (key) {
-          Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key));
-        });
-      }
-    }
-
-    return target;
-  }
-
   function _inherits(subClass, superClass) {
     if (typeof superClass !== "function" && superClass !== null) {
       throw new TypeError("Super expression must either be null or a function");
@@ -353,218 +304,220 @@ var Torex = (function () {
     }).join('');
   }
 
-  var NodeConstructor = /*#__PURE__*/function () {
-    function NodeConstructor(ray) {
-      _classCallCheck(this, NodeConstructor);
-
-      this.c = ray.c;
-
-      switch (ray.type) {
-        case "native":
-          break;
-
-        case "tag":
-          if (!customElements.get(ray.custom)) {
-            this.customize(ray.custom, ray.tag);
-          }
-
-          break;
-
-        case "custom":
-          if (!customElements.get(ray.custom)) {
-            try {
-              this.customize(ray.custom, ray.tag);
-            } catch (e) {//console.error(e);
-            }
-          }
-
-          break;
-
-        case "default":
-          try {
-            this.customize("igniter-" + ray.custom, ray.tag);
-          } catch (e) {//console.error(e);
-          }
-
-          break;
-      }
-
-      var answer = Reflect.construct(ray.from, [], ray.c);
-
-      for (var v in ray.attr) {
-        answer.setAttribute(v, ray.attr[v]);
-      }
-
-      var _iterator = _createForOfIteratorHelper(ray.items),
-          _step;
-
-      try {
-        for (_iterator.s(); !(_step = _iterator.n()).done;) {
-          var item = _step.value;
-          answer.appendChild(item);
-        }
-      } catch (err) {
-        _iterator.e(err);
-      } finally {
-        _iterator.f();
-      }
-
-      if (answer) this.storageSet(answer);
-      return answer;
-    }
-
-    _createClass(NodeConstructor, [{
-      key: "customize",
-      value: function customize(name, from) {
-        customElements.define(name, this.c, {
+  function NodeConstructor(ray) {
+    var customize = function customize(name, from) {
+      if (from != null) {
+        customElements.define(name, ray.c, {
           "extends": from
         });
-      }
-    }, {
-      key: "storageSet",
-      value: function storageSet(node) {
-        node.sharedStorage = new SharedStorage(node);
-      }
-    }]);
-
-    return NodeConstructor;
-  }();
-  var Ray = /*#__PURE__*/function () {
-    function Ray(options) {
-      _classCallCheck(this, Ray);
-
-      this.tag = options.tag;
-      this.c = options.c;
-      this.from = options.from;
-
-      if (options["native"]) {
-        this.type = "native";
-      } else if (this.c.name.toLowerCase() == this.tag.toLowerCase()) {
-        if (this.custom) console.error("You can't customize default elements. Create a new class and extend this element.");
-        this.type = "tag";
-        this.custom = "igniter-" + this.tag;
-      } else if (options.custom) {
-        this.type = "custom";
-        this.custom = options.custom;
       } else {
-        this.type = "default";
-        this.custom = false;
-        this.genCustom();
+        customElements.define(name, ray.c);
       }
+    };
 
-      this.attr = options.attr || {};
-      this.items = options.items || [];
+    var storageSet = function storageSet(node) {
+      node.sharedStorage = new SharedStorage(node);
+    };
 
-      if (!(this.items instanceof Array)) {
-        this.items = [this.items];
+    if (ray.type != "native") {
+      if (!customElements.get(ray.custom)) {
+        try {
+          customize(ray.custom, ray.tag);
+        } catch (e) {
+          /* PASS */
+        }
       }
     }
 
-    _createClass(Ray, [{
-      key: "genCustom",
-      value: function genCustom() {
-        while (customElements.get(this.custom) || !this.custom) {
-          this.custom = Randomize();
-        }
+    var answer = Reflect.construct(ray.from, [], ray.c);
+
+    for (var v in ray.attr) {
+      answer.setAttribute(v, ray.attr[v]);
+    }
+
+    var _iterator = _createForOfIteratorHelper(ray.items),
+        _step;
+
+    try {
+      for (_iterator.s(); !(_step = _iterator.n()).done;) {
+        var item = _step.value;
+        answer.appendChild(item);
       }
-    }]);
+    } catch (err) {
+      _iterator.e(err);
+    } finally {
+      _iterator.f();
+    }
 
-    return Ray;
-  }();
+    storageSet(answer);
+    return answer;
+  } // Function which generates input for NodeGenerator
 
-  var ElementKeys = ["a", "abbr", "acronym", "address", "area", "article", "aside", "audio", "b", "base", "basefont", "bdi", "bdo", "big", "blockquote", "body", "br", "button", "canvas", "caption", "center", "cite", "code", "col", "colgroup", "data", "datalist", "dd", "del", "details", "dfn", "dir", "div", "dl", "dt", "em", "embed", "fieldset", "figcaption", "figure", "font", "footer", "form", "frame", "frameset", "h1", "h2", "h3", "h4", "h5", "h6", "head", "header", "hgroup", "hr", "html", "i", "iframe", "image", "img", "input", "ins", "kbd", "label", "legend", "li", "link", "listing", "main", "map", "mark", "marquee", "menu", "menuitem", "meta", "meter", "nav", "nobr", "noembed", "noframes", "noscript", "ol", "optgroup", "option", "output", "p", "param", "picture", "plaintext", "pre", "progress", "q", "rb", "rp", "rt", "rtc", "ruby", "s", "samp", "script", "section", "select", "slot", "small", "source", "span", "strike", "strong", "style", "sub", "summary", "sup", "table", "tbody", "td", "template", "textarea", "tfoot", "th", "thead", "time", "title", "tr", "track", "tt", "u", "ul", "var", "video", "wbr", "xmp"];
+  function Ray(constructor, from, tag, options) {
+    var answer = {};
 
-  var Torex = {};
+    var genCustom = function genCustom() {
+      while (customElements.get(answer.custom) || !answer.custom) {
+        answer.custom = "torex-" + Randomize();
+      }
+    };
 
-  var Generator = /*#__PURE__*/function () {
-    function Generator() {
-      _classCallCheck(this, Generator);
+    answer.c = constructor;
+    answer.from = from;
+    answer.tag = tag;
+    var isTorexConstructor = tag ? constructor.name.toLowerCase() == tag.toLowerCase() : false;
 
-      var scope = this;
+    if (options == undefined) {
+      // Call was made by Document
+      this.type = "native";
+    } else if (isTorexConstructor) {
+      // Call was made on Torex element constructor
+      answer.type = "tag"; // We can't customize Torex element constructor
 
-      var _iterator = _createForOfIteratorHelper(this.getElements()),
-          _step;
+      if (options.custom != undefined) console.error(new TypeError("You can't customize default elements. " + "Create a new class and extend this element."));
+      answer.custom = "igniter-" + tag;
+    } else if (options.custom != undefined && constructor != Torex.Autonomous) {
+      // Customize user's constructor
+      answer.type = "custom";
+      answer.custom = options.custom;
+    } else if (constructor != Torex.Autonomous) {
+      // Create element
+      answer.type = "default";
+      answer.custom = false; // Set random custom field
 
-      try {
-        var _loop = function _loop() {
-          var key = _step.value;
-          var className = key[0].toUpperCase() + key.slice(1);
-          var prototypeName = document.createElement(key).constructor;
-          var classPrototypeName = "Torex" + prototypeName.name.substring(4, prototypeName.name.length);
+      genCustom();
+    } else {
+      console.error("Illegal Torex constructor.");
+    }
 
-          if (!scope[classPrototypeName]) {
-            scope[classPrototypeName] = /*#__PURE__*/function () {
-              function _class(i) {
-                _classCallCheck(this, _class);
+    answer.attr = options.attr || {};
+    answer.items = options.items || [];
 
-                return new NodeConstructor(scope.createRay(this.constructor, prototypeName, i));
-              }
+    if (!(answer.items instanceof Array)) {
+      answer.items = [answer.items];
+    }
 
-              return _class;
-            }();
+    return answer;
+  }
 
-            Reflect.setPrototypeOf(scope[classPrototypeName].prototype, prototypeName.prototype);
-            Reflect.setPrototypeOf(scope[classPrototypeName], prototypeName);
-            Reflect.defineProperty(scope[classPrototypeName], "name", {
-              value: classPrototypeName
-            });
-          }
+  var ElementKeys = ["a", "abbr", "acronym", "address", "area", "article", "aside", "audio", "b", "base", "basefont", "bdi", "bdo", "big", "blockquote", "body", "br", "button", "canvas", "caption", "center", "cite", "code", "col", "colgroup", "data", "datalist", "dd", "del", "details", "dfn", "dir", "div", "dl", "dt", "em", "embed", "fieldset", "figcaption", "figure", "font", "footer", "form", "frame", "frameset", "h1", "h2", "h3", "h4", "h5", "h6", "head", "header", "hgroup", "hr", "html", "i", "iframe", "img", "input", "ins", "kbd", "label", "legend", "li", "link", "listing", "main", "map", "mark", "marquee", "menu", "meta", "meter", "nav", "nobr", "noembed", "noframes", "noscript", "ol", "optgroup", "option", "output", "p", "param", "picture", "plaintext", "pre", "progress", "q", "rb", "rp", "rt", "rtc", "ruby", "s", "samp", "script", "section", "select", "slot", "small", "source", "span", "strike", "strong", "style", "sub", "summary", "sup", "table", "tbody", "td", "template", "textarea", "tfoot", "th", "thead", "time", "title", "tr", "track", "tt", "u", "ul", "var", "video", "wbr", "xmp"];
 
-          Torex[className] = /*#__PURE__*/function (_scope$classPrototype) {
-            _inherits(_class2, _scope$classPrototype);
+  function Factory(elements) {
+    var scope = {}; // This scope will be returned in future as output
 
-            var _super = _createSuper(_class2);
+    var tempScope = {}; // This scope will be deleted after exiting Factory
 
-            function _class2(o) {
-              _classCallCheck(this, _class2);
+    var _iterator = _createForOfIteratorHelper(elements),
+        _step;
 
-              if (o) o.tag = key;
-              return _super.call(this, o);
+    try {
+      var _loop = function _loop() {
+        var key = _step.value;
+        var className = key[0].toUpperCase() + key.slice(1),
+            prototypeName = document.createElement(key).constructor,
+            classPrototypeName = "Torex" + prototypeName.name.substring(4, prototypeName.name.length);
+
+        if (!tempScope[classPrototypeName]) {
+          // If we still not have this class prototype
+          tempScope[classPrototypeName] = /*#__PURE__*/function () {
+            // Create prototype class for our elements
+            function _class(tag, inner) {
+              _classCallCheck(this, _class);
+
+              return NodeConstructor(Ray(this.constructor, prototypeName, tag, inner));
             }
 
-            return _class2;
-          }(scope[classPrototypeName]);
+            return _class;
+          }();
 
-          Reflect.defineProperty(Torex[className], "name", {
-            value: className
-          });
-        };
+          Reflect.setPrototypeOf(tempScope[classPrototypeName].prototype, prototypeName.prototype); // Append chain for this class
 
-        for (_iterator.s(); !(_step = _iterator.n()).done;) {
-          _loop();
+          Reflect.setPrototypeOf(tempScope[classPrototypeName], prototypeName);
+          Reflect.defineProperty(tempScope[classPrototypeName], "name", {
+            value: classPrototypeName
+          }); // Append name property
         }
-      } catch (err) {
-        _iterator.e(err);
-      } finally {
-        _iterator.f();
+
+        scope[className] = /*#__PURE__*/function (_tempScope$classProto) {
+          _inherits(_class2, _tempScope$classProto);
+
+          var _super2 = _createSuper(_class2);
+
+          // Crete class for every element
+          function _class2(options) {
+            _classCallCheck(this, _class2);
+
+            return _super2.call(this, key, options);
+          }
+
+          return _class2;
+        }(tempScope[classPrototypeName]);
+
+        Reflect.defineProperty(scope[className], "name", {
+          value: className
+        }); // Append name property
+      };
+
+      for (_iterator.s(); !(_step = _iterator.n()).done;) {
+        _loop();
       }
+    } catch (err) {
+      _iterator.e(err);
+    } finally {
+      _iterator.f();
     }
 
-    _createClass(Generator, [{
-      key: "createRay",
-      value: function createRay(c, from, opt) {
-        return opt ? new Ray(_objectSpread2({
-          "native": false,
-          from: from,
-          c: c
-        }, opt)) : new Ray(_objectSpread2({
-          "native": true,
-          from: from,
-          c: c
-        }, opt));
+    scope.Autonomous = /*#__PURE__*/function (_tempScope$TorexEleme) {
+      _inherits(Autonomous, _tempScope$TorexEleme);
+
+      var _super = _createSuper(Autonomous);
+
+      // Autonomus element (custom dom element)
+      function Autonomous(options) {
+        _classCallCheck(this, Autonomous);
+
+        return _super.call(this, null, options);
       }
-    }, {
-      key: "getElements",
-      value: function getElements() {
-        return ElementKeys;
+
+      return Autonomous;
+    }(tempScope["TorexElement"]);
+
+    scope.Fragment = // Fragment Element (DocumentFragment constructor)
+    function Fragment(options) {
+      _classCallCheck(this, Fragment);
+
+      var self = this;
+      var output = Reflect.construct(DocumentFragment, [], self.constructor);
+      options.items = options.items || [];
+
+      if (!(options.items instanceof Array)) {
+        options.items = [options.items];
       }
-    }]);
 
-    return Generator;
-  }();
+      var _iterator2 = _createForOfIteratorHelper(options.items),
+          _step2;
 
-  var generatorContext = new Generator();
+      try {
+        for (_iterator2.s(); !(_step2 = _iterator2.n()).done;) {
+          var item = _step2.value;
+          output.appendChild(item);
+        }
+      } catch (err) {
+        _iterator2.e(err);
+      } finally {
+        _iterator2.f();
+      }
 
-  return Torex;
+      return output;
+    };
+
+    Reflect.setPrototypeOf(scope.Fragment.prototype, HTMLElement.prototype);
+    Reflect.setPrototypeOf(scope.Fragment, HTMLElement);
+    return scope;
+  }
+
+  var Torex$1 = Factory(ElementKeys);
+
+  return Torex$1;
 
 }());

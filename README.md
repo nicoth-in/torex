@@ -2,7 +2,7 @@
 <h1 align="center">Torex 1.0 release</h1>
 <p align="center"><a href="https://github.com/nicoth-in/torex/blob/master/LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-blue.svg"></a> <a href="https://circleci.com/gh/nicoth-in/torex/tree/master"><img src="https://circleci.com/gh/nicoth-in/torex/tree/master.svg?style=shield"></a></p>
 
-<p align="center">Torex is a rapid <i>frontend</i> JS framework without abstractions. It helps you to build and manage DOM in an object-oriented programming style.</p>
+<p align="center">Build rapid & powerful web apps easily with Torex, an extremely fast frontend JS framework without abstractions.</p>
 <hr>
 
 ## Installation

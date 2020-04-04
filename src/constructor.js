@@ -1,90 +1,99 @@
 import SharedStorage from './storage';
 import Randomize from './random';
 
-export class NodeConstructor {
-	constructor(ray) {
-		this.c = ray.c;
-		switch (ray.type) {
-			case "native":
-				break;
-			case "tag":
-				if(!customElements.get(ray.custom)) {
-					this.customize(ray.custom, ray.tag);
-				}
-				break;
-			case "custom":
-				if(!customElements.get(ray.custom)) {
-					try {
-						this.customize(ray.custom, ray.tag);
-					}
-					catch(e) {
-						//console.error(e);
-					}
-				} else {
-					//console.error("Custom element", ray.custom, "already exists. Created with prev constructor.");
-				}
-				break;
-			case "default":
-				try {
-					this.customize("igniter-"+ray.custom, ray.tag);
-				}
-				catch(e) {
-					//console.error(e);
-				}
-				break;
-		}
-		let answer = Reflect.construct(ray.from, [], ray.c);
 
-		for(let v in ray.attr) {
-			answer.setAttribute(v, ray.attr[v]);
-		}
+export function NodeConstructor(ray) {
 
-		for(let item of ray.items) {
-			answer.appendChild(item);
+	var customize = (name, from) => {
+		if(from != null) {
+			customElements.define(name, ray.c, { extends: from });
+		} else {
+			customElements.define(name, ray.c);
 		}
+	};
 
-		if(answer) this.storageSet(answer);
-    return answer;
-  }
-  customize(name, from) {
-  	customElements.define(name, this.c, { extends: from });
-  }
-  storageSet(node) {
-  	node.sharedStorage = new SharedStorage(node);
-  }
+	var storageSet = (node) => {
+		node.sharedStorage = new SharedStorage(node);
+	};
+
+	if(ray.type != "native") {
+		if(!customElements.get(ray.custom)) {
+			try {
+				customize(ray.custom, ray.tag);
+			} catch(e) { /* PASS */ }
+		}
+	}
+
+	let answer = Reflect.construct(ray.from, [], ray.c);
+
+	for(let v in ray.attr) {
+		answer.setAttribute(v, ray.attr[v]);
+	}
+
+	for(let item of ray.items) {
+		answer.appendChild(item);
+	}
+
+	storageSet(answer);
+
+  return answer;
 }
 
-export class Ray {
-	constructor(options) {
-		this.tag = options.tag;
-		this.c = options.c;
-		this.from = options.from;
-		if(options.native) {
-			this.type = "native";
-		} else if(this.c.name.toLowerCase() == this.tag.toLowerCase()) {
-			if(this.custom) console.error("You can't customize default elements. Create a new class and extend this element.");
-			this.type = "tag";
-			this.custom = "igniter-"+this.tag;
-		} else if(options.custom) {
-			this.type = "custom";
-			this.custom = options.custom;
-		} else {
-			this.type = "default";
-			this.custom = false;
-			this.genCustom();
+// Function which generates input for NodeGenerator
+export function Ray(constructor, from, tag, options) {
+
+	var answer = {};
+
+	var genCustom = () => {
+		while(customElements.get(answer.custom)||(!answer.custom)) {
+			answer.custom = "torex-" + Randomize();
 		}
+	};
 
-		this.attr = options.attr || {};
-		this.items = options.items || [];
+	answer.c = constructor;
+	answer.from = from;
+	answer.tag = tag;
 
-		if(!(this.items instanceof Array)) {
-			this.items = [this.items];
-		}
+	const isTorexConstructor = (tag)
+		? constructor.name.toLowerCase() == tag.toLowerCase()
+		: false;
 
+	if(options == undefined) {
+		// Call was made by Document
+		this.type = "native";
+	} else if(isTorexConstructor) {
+		// Call was made on Torex element constructor
+		answer.type = "tag";
+		// We can't customize Torex element constructor
+		if(options.custom != undefined) console.error(
+			new TypeError(
+				"You can't customize default elements. " +
+				"Create a new class and extend this element."
+			)
+		);
+		answer.custom = "igniter-"+tag;
+	} else if((options.custom != undefined)
+	 	&& (constructor != Torex.Autonomous)) {
+		// Customize user's constructor
+		answer.type = "custom";
+		answer.custom = options.custom;
+	} else if(constructor != Torex.Autonomous) {
+		// Create element
+		answer.type = "default";
+		answer.custom = false;
+		// Set random custom field
+		genCustom();
+	} else {
+		console.error("Illegal Torex constructor.");
 	}
-	genCustom() {
-		while(customElements.get(this.custom)||(!this.custom)) {
-			this.custom = Randomize();
-		}
+
+	answer.attr = options.attr || {};
+	answer.items = options.items || [];
+
+	if(!(answer.items instanceof Array)) {
+		answer.items = [answer.items];
 	}
+
+	return answer;
+
 }

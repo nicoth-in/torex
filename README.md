@@ -9,6 +9,20 @@
 Torex is a frontend framework. You can use `./dist/torex.dist.js` or minified `./dist/torex.dist.min.js` files.
 If you are using npm, run this command in terminal `npm i @torexjs/torex` or import torex in your package.json.
 
+#### You can reach Torex using CDN
+
+Unpkg
+```HTML
+<script src="https://unpkg.com/@torexjs/torex@1.1.0/dist/torex.dist.min.js"></script>
+```
+JS Delivr
+```HTML
+<script src="https://cdn.jsdelivr.net/npm/@torexjs/torex@1.1.0/dist/torex.dist.min.js"></script>
+```
+GitCDN.xyz
+```HTML
+<script src="https://gitcdn.xyz/repo/nicoth-in/torex/master/dist/torex.dist.min.js"></script>
+```
 ## Building
 
 You can build your own bundle from src using.

@@ -25,7 +25,7 @@ GitCDN.xyz
 ```
 ## Building
 
-You can build your own bundle from src using.
+You can build your own bundle from src.
 First install package. Second run `npm run build`.
 
 ## Running examples locally

@@ -1,7 +1,6 @@
 <p align="center"> <img src="https://github.com/nicoth-in/torex/raw/master/content/Logo.png" height="80px"> </p>
 <h1 align="center">Torex 1.0 release</h1>
-<p align="center"><a href="https://github.com/nicoth-in/torex/blob/master/LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-blue.svg"></a> <a href="https://circleci.com/gh/nicoth-in/torex/tree/master"><img src="https://circleci.com/gh/nicoth-in/torex/tree/master.svg?style=shield"></a></p>
-
+<p align="center"><a href="https://github.com/nicoth-in/torex/blob/master/LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-blue.svg"></a> <a href="https://circleci.com/gh/nicoth-in/torex/tree/master"><img src="https://circleci.com/gh/nicoth-in/torex/tree/master.svg?style=shield"></a> <a href="https://www.npmjs.com/package/@torexjs/torex"><img src="https://img.shields.io/npm/dt/@torexjs/torex"></a></p>
 <p align="center">Build rapid & powerful web apps easily with Torex, an extremely fast frontend JS framework without abstractions.</p>
 <hr>
 
